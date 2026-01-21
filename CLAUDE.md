@@ -58,11 +58,17 @@ The app uses a clean service-oriented architecture with clear separation of conc
 - Handles all NSWindow lifecycle operations (must run on main thread)
 
 **Services** (`Services/`)
-- `AuthManager`: OAuth 2.0 authentication with MSAL, token management, silent refresh
+- `AuthManager`: OAuth 2.0 authentication with MSAL, token management, silent refresh, lazy initialization
 - `GraphAPIService`: Microsoft Graph API client (user profile, calendars, events)
 - `TimeCalculator`: Daily/weekly time range calculations and event duration totals
-- `StorageManager`: Keychain (tokens) and UserDefaults (preferences) persistence
+- `StorageManager`: Keychain (tokens, MSAL config) and UserDefaults (preferences) persistence
 - `UpdateScheduler`: Background timer for periodic data refresh
+
+**Utilities** (`Utilities/`)
+- `ConfigurationValidator`: UUID format validation for Client ID and Tenant ID
+- `MigrationManager`: Auto-migration from hardcoded credentials to Keychain
+- `KeychainHelper`: Secure credential storage wrapper
+- `TimeFormatter`: Time formatting utilities
 
 **Models** (`Models/`)
 - `CalendarEvent`: Graph API event with organizer filtering
@@ -72,16 +78,19 @@ The app uses a clean service-oriented architecture with clear separation of conc
 
 **Views** (`Views/`)
 - `PopoverView`: Main menu displaying time summary and actions
-- `SettingsView`: Tabbed preferences window (Goals, Calendar, Account, About)
+- `SettingsView`: Custom tabbed preferences window (Goals, Calendar, Account, Configuration, About)
 - `DeviceCodeView`: OAuth authentication UI with browser redirect
 - `CalendarSelectionView`: Calendar picker during setup
+- `ConfigurationSetupView`: First-launch MSAL configuration screen
 
 ### Data Flow
 
-1. **Authentication**: `AuthManager` → MSAL interactive auth → Tokens saved to Keychain
-2. **Calendar Selection**: `GraphAPIService` fetches calendars → User selects → ID saved to UserDefaults
-3. **Data Refresh**: `UpdateScheduler` triggers → `GraphAPIService` fetches events → `TimeCalculator` computes totals → `AppDelegate` updates UI
-4. **Event Filtering**: Only counts events where user is the organizer (filters out meeting invites)
+1. **Configuration Check**: App launch → `MigrationManager` auto-migrates existing users → Check Keychain for Client ID/Tenant ID
+2. **Lazy Initialization**: `AuthManager.initialize()` called after config verified → Loads credentials from Keychain → Initializes MSAL
+3. **Authentication**: `AuthManager` → MSAL interactive auth → Tokens saved to Keychain
+4. **Calendar Selection**: `GraphAPIService` fetches calendars → User selects → ID saved to UserDefaults
+5. **Data Refresh**: `UpdateScheduler` triggers → `GraphAPIService` fetches events → `TimeCalculator` computes totals → `AppDelegate` updates UI
+6. **Event Filtering**: Only counts events where user is the organizer (filters out meeting invites)
 
 ## Critical Threading Requirements
 
@@ -108,10 +117,29 @@ private func showWindow() async {
 ```
 
 **Key Locations:**
-- `AppDelegate.showDeviceCodeFlow()` - Line 176
-- `AppDelegate.showCalendarSelection()` - Line 217
-- `AppDelegate.refreshData()` - All UI updates (lines 257, 330, 341)
+- `AppDelegate.showConfigurationSetup()` - Configuration UI creation
+- `AppDelegate.showDeviceCodeFlow()` - Authentication UI creation
+- `AppDelegate.showCalendarSelection()` - Calendar picker UI creation
+- `AppDelegate.refreshData()` - All UI updates
 - `AppDelegate.updateStatusItemDisplay()` - Called from main thread
+- `AppDelegate.openSettings()` - Settings window creation
+
+**Critical Pattern**: All SwiftUI views must be created inside `MainActor.run {}` before passing to `NSHostingView`:
+
+```swift
+// ✅ CORRECT
+await MainActor.run {
+    let view = MySwiftUIView(...)
+    window.contentView = NSHostingView(rootView: view)
+    window.makeKeyAndOrderFront(nil)
+}
+
+// ❌ WRONG - View created off main thread
+let view = MySwiftUIView(...)
+await MainActor.run {
+    window.contentView = NSHostingView(rootView: view)  // CRASH
+}
+```
 
 ### State Management
 
@@ -127,10 +155,19 @@ See `BUGFIX_THREAD_SAFETY.md` for detailed explanation of threading fixes.
 
 ### Authentication Flow
 
+**Prerequisites**: `AuthManager.initialize()` must be called before any auth operations
+- Loads Client ID and Tenant ID from Keychain
+- Creates MSAL authority URL
+- Initializes `MSALPublicClientApplication`
+- Validates redirect URI against Info.plist
+
+**Flow Steps**:
 1. **Interactive Auth**: Opens system browser for OAuth 2.0 consent
 2. **Token Storage**: Access token + expiry saved to Keychain (managed by StorageManager)
 3. **Silent Refresh**: Automatic token refresh when expired using MSAL cache
 4. **Scopes Required**: `Calendars.Read`, `User.Read`
+
+**Error Handling**: `AuthManager` throws `AuthError.notInitialized` if auth methods called before `initialize()`
 
 ### API Endpoints Used
 
@@ -158,16 +195,40 @@ let ownEvents = events.filter {
 
 Graph API returns max 100 events per page. `GraphAPIService.fetchEvents()` handles pagination with `@odata.nextLink` (lines 45-93).
 
-## Configuration Files
+## Secure Configuration Architecture
+
+### MSAL Credentials Storage
+
+**CRITICAL**: Client ID and Tenant ID are **NOT hardcoded** in source code. They are stored securely in macOS Keychain.
+
+**Storage Location**: Keychain (via `StorageManager`)
+- `KeychainKeys.clientId` = "msal_client_id"
+- `KeychainKeys.tenantId` = "msal_tenant_id"
+
+**First Launch Flow**:
+1. App checks `StorageManager.hasConfiguration()`
+2. If missing → Shows `ConfigurationSetupView` (user must enter credentials)
+3. Values validated with `ConfigurationValidator.isValidClientId()` and `isValidTenantId()`
+4. Saved to Keychain
+5. `AuthManager.initialize()` called to load credentials and setup MSAL
+
+**Existing User Migration**:
+- `MigrationManager.migrateConfigurationIfNeeded()` runs on app launch
+- Detects existing users by checking for saved tokens
+- Auto-migrates legacy hardcoded values to Keychain (one-time only)
+- See `MigrationManager.swift` for hardcoded legacy values used during migration
+
+**Reconfiguration**:
+- Settings → Configuration tab allows viewing/changing credentials
+- Changes require sign-out and app restart
+- Warning shown if Client ID doesn't match Info.plist URL scheme
 
 ### Constants.swift
 
-Contains Microsoft Entra app registration values:
-- `clientId`: Registered app client ID
-- `tenantId`: Organization tenant ID (single-tenant app)
-- `authorityURL`: `https://login.microsoftonline.com/{tenantId}`
-
-**Note**: Currently hardcoded for Nexer tenant. For multi-tenant, change to `https://login.microsoftonline.com/common`.
+**Current Contents**:
+- Graph API endpoints and scopes only
+- **NO client ID or tenant ID** (removed for security)
+- `GraphConstants.scopes`: `["Calendars.Read", "User.Read"]`
 
 ### Info.plist
 
@@ -265,13 +326,44 @@ let weeklyAttributes: [NSAttributedString.Key: Any] =
 
 **Documentation**: See `BUGFIX_MSAL_AUTH.md`
 
+### SwiftUI Views in NSHostingView (FIXED)
+
+**Issue**: Creating SwiftUI views off the main thread before passing to NSHostingView caused CoreGraphics "entangle context" errors and crashes.
+
+**Fix**: All SwiftUI view creation moved inside `MainActor.run {}` blocks.
+
+**Affected Methods**: `showConfigurationSetup()`, `showDeviceCodeFlow()`, `showCalendarSelection()`, `openSettings()`
+
+### Settings TabView Display (FIXED)
+
+**Issue**: SwiftUI TabView rendered as dropdown menu instead of horizontal tabs at top.
+
+**Fix**: Replaced native TabView with custom tab bar using HStack of buttons + switch statement for content.
+
 ## Development Tips
 
 ### Testing Authentication
 
-1. Delete saved tokens: Delete keychain items with prefix "office365_"
-2. Reset MSAL cache: Call `authManager.signOut()`
+**Reset All Credentials**:
+```bash
+# Delete all Keychain items (tokens + MSAL config)
+security delete-generic-password -s "office365_access_token" 2>/dev/null
+security delete-generic-password -s "msal_client_id" 2>/dev/null
+security delete-generic-password -s "msal_tenant_id" 2>/dev/null
+defaults delete com.nexer.KeepTheBudget
+```
+
+**Reset Tokens Only** (keep MSAL config):
+1. Call `authManager.signOut()` programmatically
+2. Or sign out via Settings → Account → Sign Out
 3. Relaunch app to trigger fresh auth flow
+
+**Test First-Launch Flow**:
+1. Delete all credentials (see above)
+2. Launch app
+3. Should show `ConfigurationSetupView`
+4. Enter Client ID and Tenant ID
+5. Complete authentication and calendar selection
 
 ### Testing Time Calculations
 
@@ -316,12 +408,30 @@ if wasLoading {
 - File headers include purpose comment
 - Print statements use emoji prefixes for log categorization (🔐 auth, 📅 calendar, ⏱️ time, etc.)
 
+## Deployment
+
+### Building for Distribution
+
+```bash
+# Build release version
+xcodebuild -project KeepTheBudget.xcodeproj -scheme KeepTheBudget -configuration Release build
+
+# Re-sign frameworks for local distribution (fixes MSAL code signing)
+codesign --force --deep --sign - ~/Library/Developer/Xcode/DerivedData/KeepTheBudget-*/Build/Products/Release/KeepTheBudget.app/Contents/Frameworks/MSAL.framework
+codesign --force --deep --sign - ~/Library/Developer/Xcode/DerivedData/KeepTheBudget-*/Build/Products/Release/KeepTheBudget.app
+
+# Install to Applications
+cp -R ~/Library/Developer/Xcode/DerivedData/KeepTheBudget-*/Build/Products/Release/KeepTheBudget.app /Applications/
+```
+
+**Note**: Release builds may crash due to optimization issues. For local deployment, use Debug builds which are fully tested and stable.
+
 ## Files Not to Modify
 
 - `Package.swift` - SPM dependencies (MSAL 1.3.0+)
 - `project.yml` - XcodeGen config (regenerate Xcode project if changed)
 - `KeepTheBudget.entitlements` - Security entitlements
-- `Constants.swift` - Microsoft Entra app registration values (tenant-specific)
+- `Info.plist` - Must contain `msal{clientId}://auth` URL scheme matching configured Client ID
 
 ## Additional Documentation
 
