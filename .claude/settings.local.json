@@ -10,7 +10,8 @@
       "Bash(/Applications/KeepTheBudget.app/Contents/MacOS/KeepTheBudget)",
       "Bash(codesign --force --deep --sign -:*)",
       "Bash(log show:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ]
   }
 }
