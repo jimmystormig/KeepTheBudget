@@ -1,0 +1,190 @@
+//
+//  PopoverView.swift
+//  KeepTheBudget
+//
+//  Main popover menu displayed when clicking menu bar icon
+//
+
+import SwiftUI
+
+struct PopoverView: View {
+    let timeSummary: TimeSummary?
+    let lastUpdateTime: Date?
+    let isLoading: Bool
+    let errorMessage: String?
+    let onRefresh: () -> Void
+    let onOpenSettings: () -> Void
+    let onQuit: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header
+            VStack(spacing: 15) {
+                if let summary = timeSummary {
+                    // Daily summary
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Today:")
+                                .font(.headline)
+                            Spacer()
+                            Text(TimeFormatter.format(minutes: summary.dailyMinutes))
+                                .font(.headline)
+                                .foregroundColor(summary.dailyStatus == .overGoal ? .red : .primary)
+                            Text("/ \(TimeFormatter.format(minutes: summary.dailyGoalMinutes))")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+
+                        ProgressBar(
+                            percentage: min(summary.dailyPercentage, 100),
+                            color: summary.dailyStatus == .overGoal ? .red : .blue
+                        )
+
+                        HStack {
+                            Text("\(Int(summary.dailyPercentage))%")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            if summary.dailyStatus == .overGoal {
+                                Text("Over Goal")
+                                    .font(.caption)
+                                    .foregroundColor(.red)
+                            } else {
+                                Text("On Track")
+                                    .font(.caption)
+                                    .foregroundColor(.green)
+                            }
+                        }
+                    }
+
+                    Divider()
+
+                    // Weekly summary
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("This Week:")
+                                .font(.headline)
+                            Spacer()
+                            Text(TimeFormatter.format(minutes: summary.weeklyMinutes))
+                                .font(.headline)
+                                .foregroundColor(summary.weeklyStatus == .overGoal ? .red : .primary)
+                            Text("/ \(TimeFormatter.format(minutes: summary.weeklyGoalMinutes))")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+
+                        ProgressBar(
+                            percentage: min(summary.weeklyPercentage, 100),
+                            color: summary.weeklyStatus == .overGoal ? .red : .blue
+                        )
+
+                        HStack {
+                            Text("\(Int(summary.weeklyPercentage))%")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            if summary.weeklyStatus == .overGoal {
+                                Text("Over Goal")
+                                    .font(.caption)
+                                    .foregroundColor(.red)
+                            } else {
+                                Text("On Track")
+                                    .font(.caption)
+                                    .foregroundColor(.green)
+                            }
+                        }
+                    }
+                } else if isLoading {
+                    HStack {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                        Text("Loading calendar data...")
+                            .foregroundColor(.secondary)
+                    }
+                    .padding()
+                } else if let error = errorMessage {
+                    VStack(spacing: 10) {
+                        Image(systemName: "exclamationmark.triangle")
+                            .font(.largeTitle)
+                            .foregroundColor(.orange)
+                        Text("Error")
+                            .font(.headline)
+                        Text(error)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding()
+                }
+            }
+            .padding()
+
+            Divider()
+
+            // Status footer
+            HStack {
+                Image(systemName: "clock")
+                    .foregroundColor(.secondary)
+                    .font(.caption)
+
+                if let lastUpdate = lastUpdateTime {
+                    Text("Updated \(TimeFormatter.formatRelativeTime(from: lastUpdate))")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                } else {
+                    Text("Not updated yet")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                Spacer()
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 8)
+            .background(Color.gray.opacity(0.05))
+
+            Divider()
+
+            // Action buttons
+            VStack(spacing: 0) {
+                MenuButton(icon: "arrow.clockwise", title: "Refresh Now", action: onRefresh)
+                Divider()
+                MenuButton(icon: "gear", title: "Preferences", action: onOpenSettings)
+                Divider()
+                MenuButton(icon: "info.circle", title: "About", action: {
+                    // TODO: Show about window
+                })
+                Divider()
+                MenuButton(icon: "power", title: "Quit KeepTheBudget", action: onQuit)
+            }
+        }
+        .frame(width: 300)
+    }
+}
+
+struct MenuButton: View {
+    let icon: String
+    let title: String
+    let action: () -> Void
+
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack {
+                Image(systemName: icon)
+                    .frame(width: 20)
+                Text(title)
+                Spacer()
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 10)
+            .contentShape(Rectangle())
+            .background(isHovered ? Color.blue.opacity(0.1) : Color.clear)
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            isHovered = hovering
+        }
+    }
+}

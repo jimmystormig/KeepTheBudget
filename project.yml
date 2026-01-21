@@ -1,0 +1,35 @@
+name: KeepTheBudget
+options:
+  bundleIdPrefix: com.nexer
+  deploymentTarget:
+    macOS: "12.0"
+  developmentLanguage: en
+settings:
+  SWIFT_VERSION: 5.9
+  MACOSX_DEPLOYMENT_TARGET: 12.0
+  MARKETING_VERSION: 1.0.0
+  CURRENT_PROJECT_VERSION: 1
+packages:
+  MSAL:
+    url: https://github.com/AzureAD/microsoft-authentication-library-for-objc
+    from: 1.3.0
+targets:
+  KeepTheBudget:
+    type: application
+    platform: macOS
+    sources:
+      - KeepTheBudget
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.nexer.KeepTheBudget
+        INFOPLIST_FILE: KeepTheBudget/App/Info.plist
+        CODE_SIGN_ENTITLEMENTS: KeepTheBudget/App/KeepTheBudget.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        COMBINE_HIDPI_IMAGES: YES
+        ENABLE_HARDENED_RUNTIME: YES
+        GENERATE_INFOPLIST_FILE: NO
+        SWIFT_EMIT_LOC_STRINGS: YES
+        SWIFT_VERSION: 5.9
+    dependencies:
+      - package: MSAL
+        product: MSAL

@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xcodegen generate:*)",
+      "Bash(xcodebuild:*)",
+      "Bash(tree:*)",
+      "Bash(ls:*)",
+      "Bash(killall:*)",
+      "Bash(open:*)",
+      "Bash(/Applications/KeepTheBudget.app/Contents/MacOS/KeepTheBudget)"
+    ]
+  }
+}

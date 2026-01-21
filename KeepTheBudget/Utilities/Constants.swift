@@ -1,0 +1,42 @@
+//
+//  Constants.swift
+//  KeepTheBudget
+//
+//  Application constants and Microsoft Graph API endpoints
+//
+
+import Foundation
+
+enum GraphConstants {
+    static let baseURL = "https://graph.microsoft.com/v1.0"
+
+    // Endpoints
+    static let meEndpoint = "\(baseURL)/me"
+    static let calendarsEndpoint = "\(baseURL)/me/calendars"
+
+    static func eventsEndpoint(calendarId: String) -> String {
+        // URL encode the calendar ID as it may contain special characters
+        let encodedCalendarId = calendarId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? calendarId
+        return "\(baseURL)/me/calendars/\(encodedCalendarId)/events"
+    }
+
+    // Scopes
+    // Note: Don't include offline_access - it's a reserved scope that MSAL adds automatically
+    static let scopes = [
+        "Calendars.Read",
+        "User.Read"
+    ]
+}
+
+enum KeychainKeys {
+    static let accessToken = "office365_access_token"
+    static let refreshToken = "office365_refresh_token"
+    static let tokenExpiry = "office365_token_expiry"
+    static let clientId = "msal_client_id"
+    static let tenantId = "msal_tenant_id"
+}
+
+enum UserDefaultsKeys {
+    static let preferences = "app_preferences"
+    static let deltaLink = "calendar_delta_link"
+}
