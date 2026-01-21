@@ -55,6 +55,16 @@ struct PopoverView: View {
                                     .foregroundColor(.green)
                             }
                         }
+
+                        // Daily categories (under Today section)
+                        if !summary.dailyCategoryMinutes.isEmpty {
+                            CategoryBreakdownView(
+                                title: "Categories",
+                                categories: summary.categoriesSortedByDailyTime,
+                                isDaily: true
+                            )
+                            .padding(.top, 8)
+                        }
                     }
 
                     Divider()
@@ -92,6 +102,16 @@ struct PopoverView: View {
                                     .font(.caption)
                                     .foregroundColor(.green)
                             }
+                        }
+
+                        // Weekly categories (under This Week section)
+                        if !summary.weeklyCategoryMinutes.isEmpty {
+                            CategoryBreakdownView(
+                                title: "Categories",
+                                categories: summary.categoriesSortedByWeeklyTime,
+                                isDaily: false
+                            )
+                            .padding(.top, 8)
                         }
                     }
                 } else if isLoading {

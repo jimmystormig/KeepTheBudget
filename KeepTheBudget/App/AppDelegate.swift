@@ -64,7 +64,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func setupPopover() {
         popover = NSPopover()
-        popover.contentSize = NSSize(width: 300, height: 400)
+        popover.contentSize = NSSize(width: 300, height: 500)
         popover.behavior = .transient
     }
 
@@ -416,7 +416,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             let ownDailyEvents = dailyEvents.filter { $0.organizerEmail.caseInsensitiveCompare(userProfile.mail) == .orderedSame }
             let ownWeeklyEvents = weeklyEvents.filter { $0.organizerEmail.caseInsensitiveCompare(userProfile.mail) == .orderedSame }
 
-            print("   ✅ After filtering: \(ownDailyEvents.count) daily events, \(ownWeeklyEvents.count) weekly events")
+            // Filter for events containing " - "
+            let validDailyEvents = ownDailyEvents.filter { $0.isValidForTracking }
+            let validWeeklyEvents = ownWeeklyEvents.filter { $0.isValidForTracking }
+
+            print("   ✅ After organizer filter: \(ownDailyEvents.count) daily events, \(ownWeeklyEvents.count) weekly events")
+            print("   ✅ After category filter: \(validDailyEvents.count) daily events, \(validWeeklyEvents.count) weekly events")
+            if validDailyEvents.isEmpty && !ownDailyEvents.isEmpty {
+                print("   ⚠️  WARNING: All daily events filtered out - no events contain ' - '")
+            }
 
             // Debug: Show first event details
             if let firstEvent = ownDailyEvents.first {
@@ -428,16 +436,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
 
             // Calculate totals
-            let dailyMinutes = timeCalculator.calculateTotalMinutes(events: ownDailyEvents)
-            let weeklyMinutes = timeCalculator.calculateTotalMinutes(events: ownWeeklyEvents)
+            let dailyMinutes = timeCalculator.calculateTotalMinutes(events: validDailyEvents)
+            let weeklyMinutes = timeCalculator.calculateTotalMinutes(events: validWeeklyEvents)
             print("   ⏱️  Calculated: \(dailyMinutes) daily minutes, \(weeklyMinutes) weekly minutes")
+
+            // Calculate category breakdowns
+            let dailyCategoryMinutes = timeCalculator.calculateCategoryBreakdown(events: validDailyEvents)
+            let weeklyCategoryMinutes = timeCalculator.calculateCategoryBreakdown(events: validWeeklyEvents)
+            print("   📊 Daily categories: \(dailyCategoryMinutes.keys.sorted().joined(separator: ", "))")
+            print("   📊 Weekly categories: \(weeklyCategoryMinutes.keys.sorted().joined(separator: ", "))")
 
             // Create summary
             let summary = TimeSummary(
                 dailyMinutes: dailyMinutes,
                 weeklyMinutes: weeklyMinutes,
                 dailyGoalMinutes: preferences.dailyGoalMinutes,
-                weeklyGoalMinutes: preferences.weeklyGoalMinutes
+                weeklyGoalMinutes: preferences.weeklyGoalMinutes,
+                dailyCategoryMinutes: dailyCategoryMinutes,
+                weeklyCategoryMinutes: weeklyCategoryMinutes
             )
 
             await MainActor.run {

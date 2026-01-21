@@ -50,4 +50,22 @@ class TimeCalculator {
 
         return calculateTotalMinutes(events: filteredEvents)
     }
+
+    /// Calculates time breakdown by category
+    /// Only includes events that contain " - " in subject
+    /// Returns dictionary of category names to total minutes
+    func calculateCategoryBreakdown(events: [CalendarEvent]) -> [String: Int] {
+        var categoryMinutes: [String: Int] = [:]
+
+        for event in events {
+            // Only process events with valid category
+            guard let category = event.category else {
+                continue
+            }
+
+            categoryMinutes[category, default: 0] += event.durationMinutes
+        }
+
+        return categoryMinutes
+    }
 }

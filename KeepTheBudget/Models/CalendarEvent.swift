@@ -23,6 +23,22 @@ struct CalendarEvent {
             return Int(end.timeIntervalSince(start) / 60)
         }
     }
+
+    /// Extracts category from subject (text before first " - ")
+    /// Returns nil if subject doesn't contain " - "
+    var category: String? {
+        guard let dashRange = subject.range(of: " - ") else {
+            return nil
+        }
+        let extracted = String(subject[..<dashRange.lowerBound])
+        let trimmed = extracted.trimmingCharacters(in: .whitespaces)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    /// Returns true if event subject contains " - " (required for tracking)
+    var isValidForTracking: Bool {
+        return subject.contains(" - ")
+    }
 }
 
 // Graph API response structures

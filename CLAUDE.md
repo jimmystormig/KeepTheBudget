@@ -410,21 +410,44 @@ if wasLoading {
 
 ## Deployment
 
-### Building for Distribution
+### Building and Deploying Updates
+
+**IMPORTANT**: Do NOT manually re-sign the app after building. Xcode's build process correctly applies entitlements, and manual re-signing will break the app.
 
 ```bash
-# Build release version
-xcodebuild -project KeepTheBudget.xcodeproj -scheme KeepTheBudget -configuration Release build
+# Step 1: Clean build (recommended for updates)
+xcodebuild -project KeepTheBudget.xcodeproj -scheme KeepTheBudget -configuration Debug clean build
 
-# Re-sign frameworks for local distribution (fixes MSAL code signing)
-codesign --force --deep --sign - ~/Library/Developer/Xcode/DerivedData/KeepTheBudget-*/Build/Products/Release/KeepTheBudget.app/Contents/Frameworks/MSAL.framework
-codesign --force --deep --sign - ~/Library/Developer/Xcode/DerivedData/KeepTheBudget-*/Build/Products/Release/KeepTheBudget.app
+# Step 2: Kill any running instances
+killall KeepTheBudget 2>/dev/null
 
-# Install to Applications
-cp -R ~/Library/Developer/Xcode/DerivedData/KeepTheBudget-*/Build/Products/Release/KeepTheBudget.app /Applications/
+# Step 3: Copy to Applications (without re-signing)
+rm -rf /Applications/KeepTheBudget.app
+cp -R ~/Library/Developer/Xcode/DerivedData/KeepTheBudget-*/Build/Products/Debug/KeepTheBudget.app /Applications/
+
+# Step 4: Launch
+open /Applications/KeepTheBudget.app
 ```
 
-**Note**: Release builds may crash due to optimization issues. For local deployment, use Debug builds which are fully tested and stable.
+**One-liner for quick deployment:**
+```bash
+xcodebuild -project KeepTheBudget.xcodeproj -scheme KeepTheBudget -configuration Debug build && \
+killall KeepTheBudget 2>/dev/null; \
+rm -rf /Applications/KeepTheBudget.app && \
+cp -R ~/Library/Developer/Xcode/DerivedData/KeepTheBudget-*/Build/Products/Debug/KeepTheBudget.app /Applications/ && \
+open /Applications/KeepTheBudget.app
+```
+
+**Why Debug instead of Release?**
+- Debug builds are fully tested and stable
+- Release builds may crash due to Swift optimization issues
+- Xcode's code signing with entitlements works correctly for Debug builds
+- Manual re-signing breaks the entitlements (network access, sandboxing)
+
+**Troubleshooting:**
+- If app doesn't appear in menu bar: Check that it's running from Xcode (⌘R) first to verify functionality
+- If app crashes on deployment: Never re-sign manually - always copy directly from Xcode build
+- If new files aren't included: Run `xcodegen generate` to regenerate the Xcode project
 
 ## Files Not to Modify
 
