@@ -1,14 +1,15 @@
 //
-//  WeeklyReportGenerator.swift
+//  TimeReportGenerator.swift
 //  KeepTheBudget
 //
-//  Service for generating hierarchical weekly reports with grouping and time rounding
+//  Service for generating hierarchical time reports with grouping and time rounding
+//  Supports both weekly and daily report formats
 //
 
 import Foundation
 
-/// Generates weekly reports from calendar events with hierarchical grouping
-class WeeklyReportGenerator {
+/// Generates time reports from calendar events with hierarchical grouping
+class TimeReportGenerator {
     private let timeCalculator: TimeCalculator
 
     init(timeCalculator: TimeCalculator) {
@@ -16,7 +17,7 @@ class WeeklyReportGenerator {
     }
 
     /// Generate hierarchical report from events with grouping and rounding
-    func generateReport(from events: [CalendarEvent], startDate: Date, endDate: Date) -> WeeklyReport {
+    func generateReport(from events: [CalendarEvent], startDate: Date, endDate: Date) -> TimeReport {
         // Step 1: Parse all events into parts
         let parsedEvents = events.compactMap { event -> (EventParts, Int)? in
             guard let parts = parseEventSubject(event.subject) else { return nil }
@@ -118,10 +119,10 @@ class WeeklyReportGenerator {
         // Calculate grand total
         let grandTotal = firstLevelGroups.reduce(0) { $0 + $1.totalMinutes }
 
-        return WeeklyReport(
+        return TimeReport(
             firstLevelGroups: firstLevelGroups,
-            weekStart: startDate,
-            weekEnd: endDate,
+            startDate: startDate,
+            endDate: endDate,
             totalMinutes: grandTotal
         )
     }

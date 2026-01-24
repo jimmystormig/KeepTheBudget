@@ -1,41 +1,52 @@
 //
-//  WeeklyReport.swift
+//  TimeReport.swift
 //  KeepTheBudget
 //
-//  Data structures for hierarchical weekly time report with grouping and rounding
+//  Data structures for hierarchical time report with grouping and rounding
+//  Supports both weekly and daily report formats
 //
 
 import Foundation
 
-/// Main weekly report containing hierarchical time groupings
-struct WeeklyReport {
+/// Main time report containing hierarchical time groupings
+struct TimeReport {
     let firstLevelGroups: [FirstLevelGroup]
-    let weekStart: Date
-    let weekEnd: Date
+    let startDate: Date
+    let endDate: Date
     let totalMinutes: Int
 
     /// Format report as readable text for clipboard
+    /// Automatically detects report type based on date range
     func toText() -> String {
         var output = ""
 
         // Header with date range
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "MMM d"
-        let startStr = dateFormatter.string(from: weekStart)
+        let startStr = dateFormatter.string(from: startDate)
 
         // For end date, include year if different from start
         let calendar = Calendar.current
-        let startYear = calendar.component(.year, from: weekStart)
-        let endYear = calendar.component(.year, from: weekEnd)
+        let startYear = calendar.component(.year, from: startDate)
+        let endYear = calendar.component(.year, from: endDate)
 
         if startYear == endYear {
             dateFormatter.dateFormat = "MMM d, yyyy"
         } else {
             dateFormatter.dateFormat = "MMM d, yyyy"
         }
-        let endStr = dateFormatter.string(from: weekEnd)
+        let endStr = dateFormatter.string(from: endDate)
 
-        output += "Week of \(startStr) - \(endStr)\n"
+        // Determine header based on date range
+        let daysDifference = calendar.dateComponents([.day], from: startDate, to: endDate).day ?? 0
+        if daysDifference >= 6 {
+            // Weekly report
+            output += "Week of \(startStr) - \(endStr)\n"
+        } else {
+            // Daily or custom range report
+            output += "Report: \(startStr) - \(endStr)\n"
+        }
+
         output += "Total: \(TimeFormatter.format(minutes: totalMinutes))\n\n"
 
         // First-level groups

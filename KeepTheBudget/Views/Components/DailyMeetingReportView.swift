@@ -1,0 +1,300 @@
+//
+//  DailyMeetingReportView.swift
+//  KeepTheBudget
+//
+//  UI for daily meeting report with date/time range selection and AI analysis
+//
+
+import SwiftUI
+import AppKit
+
+struct DailyMeetingReportView: View {
+    let defaultStartDate: Date
+    let defaultEndDate: Date
+    let onGenerateReport: (Date, Date) async -> TimeReport?
+    let aiAnalyzer: AIReportAnalyzer
+    let storageManager: StorageManager
+    let onClose: () -> Void
+
+    @State private var startDate: Date
+    @State private var endDate: Date
+    @State private var report: TimeReport?
+    @State private var expandedFirstLevel: Set<UUID> = []
+    @State private var copiedToClipboard = false
+    @State private var isGenerating = false
+    @State private var showAISection = false
+
+    init(
+        defaultStartDate: Date,
+        defaultEndDate: Date,
+        onGenerateReport: @escaping (Date, Date) async -> TimeReport?,
+        aiAnalyzer: AIReportAnalyzer,
+        storageManager: StorageManager,
+        onClose: @escaping () -> Void
+    ) {
+        self.defaultStartDate = defaultStartDate
+        self.defaultEndDate = defaultEndDate
+        self.onGenerateReport = onGenerateReport
+        self.aiAnalyzer = aiAnalyzer
+        self.storageManager = storageManager
+        self.onClose = onClose
+        self._startDate = State(initialValue: defaultStartDate)
+        self._endDate = State(initialValue: defaultEndDate)
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Date range selector with time pickers
+            dateRangeSelectorView
+                .padding()
+                .background(Color(NSColor.controlBackgroundColor))
+
+            Divider()
+
+            // Report content or empty state
+            if isGenerating {
+                loadingView
+            } else if let report = report {
+                reportContentView(report)
+            } else {
+                emptyStateView
+            }
+
+            Divider()
+
+            // AI Analysis section (collapsible)
+            if report != nil {
+                aiAnalysisSection
+                Divider()
+            }
+
+            // Footer with Copy and Close buttons
+            footerView
+                .padding()
+                .background(Color(NSColor.controlBackgroundColor))
+        }
+        .frame(width: 600, height: 750)
+        .onAppear {
+            generateReportForCurrentDates()
+        }
+    }
+
+    // MARK: - Date Range Selector
+
+    private var dateRangeSelectorView: some View {
+        VStack(spacing: 12) {
+            Text("Daily Meeting Report")
+                .font(.headline)
+
+            HStack(spacing: 12) {
+                Text("From:")
+                    .foregroundColor(.secondary)
+
+                DatePicker("", selection: $startDate, displayedComponents: [.date, .hourAndMinute])
+                    .labelsHidden()
+                    .frame(width: 180)
+
+                Text("To:")
+                    .foregroundColor(.secondary)
+
+                DatePicker("", selection: $endDate, displayedComponents: [.date, .hourAndMinute])
+                    .labelsHidden()
+                    .frame(width: 180)
+
+                Spacer()
+
+                Button(action: generateReportForCurrentDates) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.clockwise")
+                        Text("Generate")
+                    }
+                }
+                .disabled(isGenerating)
+            }
+
+            // Helpful hint
+            Text("Defaults to 09:00 last workday → 09:00 today")
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+    }
+
+    // MARK: - Report Content
+
+    private func reportContentView(_ report: TimeReport) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                // Header
+                reportHeaderView(report)
+
+                // First-level groups
+                if report.firstLevelGroups.isEmpty {
+                    Text("No events found in selected date range")
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding()
+                } else {
+                    ForEach(report.firstLevelGroups) { firstLevel in
+                        FirstLevelGroupView(
+                            group: firstLevel,
+                            isExpanded: expandedFirstLevel.contains(firstLevel.id),
+                            onToggle: {
+                                toggleExpansion(firstLevel.id)
+                            }
+                        )
+                    }
+                }
+            }
+            .padding()
+            .textSelection(.enabled)
+        }
+    }
+
+    private func reportHeaderView(_ report: TimeReport) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(formatDateRange(start: report.startDate, end: report.endDate))
+                .font(.title3)
+                .fontWeight(.semibold)
+
+            HStack {
+                Text("Total:")
+                    .foregroundColor(.secondary)
+                Text(TimeFormatter.format(minutes: report.totalMinutes))
+                    .font(.title3)
+                    .fontWeight(.semibold)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
+        .background(Color(NSColor.controlBackgroundColor))
+        .cornerRadius(8)
+    }
+
+    // MARK: - AI Analysis Section
+
+    private var aiAnalysisSection: some View {
+        DisclosureGroup(
+            isExpanded: $showAISection,
+            content: {
+                if let report = report {
+                    AIAnalysisView(
+                        reportText: report.toText(),
+                        analyzer: aiAnalyzer,
+                        storageManager: storageManager
+                    )
+                    .padding(.top, 8)
+                }
+            },
+            label: {
+                HStack {
+                    Image(systemName: "sparkles")
+                        .foregroundColor(.blue)
+                    Text("AI Analysis")
+                        .font(.headline)
+                }
+                .padding(.vertical, 8)
+            }
+        )
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+        .background(Color(NSColor.windowBackgroundColor))
+    }
+
+    // MARK: - Loading and Empty States
+
+    private var loadingView: some View {
+        VStack(spacing: 16) {
+            ProgressView()
+                .scaleEffect(1.2)
+            Text("Generating report...")
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var emptyStateView: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "doc.text.magnifyingglass")
+                .font(.system(size: 48))
+                .foregroundColor(.secondary)
+            Text("Select a date range and click Generate")
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    // MARK: - Footer
+
+    private var footerView: some View {
+        HStack {
+            Button(action: copyToClipboard) {
+                HStack(spacing: 6) {
+                    Image(systemName: copiedToClipboard ? "checkmark" : "doc.on.doc")
+                    Text(copiedToClipboard ? "Copied!" : "Copy to Clipboard")
+                }
+            }
+            .disabled(report == nil || isGenerating)
+
+            Spacer()
+
+            Button("Close", action: onClose)
+                .keyboardShortcut(.cancelAction)
+        }
+    }
+
+    // MARK: - Helper Methods
+
+    private func generateReportForCurrentDates() {
+        Task {
+            isGenerating = true
+            report = await onGenerateReport(startDate, endDate)
+
+            // Auto-expand all groups when report is generated
+            if let report = report {
+                expandedFirstLevel = Set(report.firstLevelGroups.map { $0.id })
+            }
+
+            isGenerating = false
+        }
+    }
+
+    private func toggleExpansion(_ id: UUID) {
+        if expandedFirstLevel.contains(id) {
+            expandedFirstLevel.remove(id)
+        } else {
+            expandedFirstLevel.insert(id)
+        }
+    }
+
+    private func copyToClipboard() {
+        guard let report = report else { return }
+        let text = report.toText()
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
+        copiedToClipboard = true
+
+        // Reset feedback after 2 seconds
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            copiedToClipboard = false
+        }
+    }
+
+    private func formatDateRange(start: Date, end: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d, HH:mm"
+        let startStr = formatter.string(from: start)
+
+        let calendar = Calendar.current
+        let startYear = calendar.component(.year, from: start)
+        let endYear = calendar.component(.year, from: end)
+
+        if startYear == endYear {
+            formatter.dateFormat = "MMM d, HH:mm yyyy"
+        } else {
+            formatter.dateFormat = "MMM d, HH:mm yyyy"
+        }
+        let endStr = formatter.string(from: end)
+
+        return "\(startStr) - \(endStr)"
+    }
+}

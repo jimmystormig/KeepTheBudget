@@ -17,6 +17,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     private var calendarWindow: NSWindow?
     private var configWindow: NSWindow?
     private var reportWindow: NSWindow?
+    private var dailyReportWindow: NSWindow?
 
     // Services
     private var authManager: AuthManager!
@@ -24,6 +25,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     private var timeCalculator: TimeCalculator!
     private var updateScheduler: UpdateScheduler!
     private var storageManager: StorageManager!
+    private lazy var aiAnalyzer = AIReportAnalyzer(storageManager: storageManager)
+    private lazy var calendarDataSource: CalendarDataSource = {
+        CalendarDataSource(graphAPIService: graphAPIService, storageManager: storageManager)
+    }()
 
     // State
     @Published private var timeSummary: TimeSummary?
@@ -185,6 +190,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
                     self?.popover.performClose(nil)
                     self?.openWeeklyReport()
                 },
+                onShowDailyReport: { [weak self] in
+                    self?.popover.performClose(nil)
+                    self?.openDailyMeetingReport()
+                },
                 onQuit: {
                     NSApplication.shared.terminate(nil)
                 },
@@ -219,6 +228,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
                         onShowReport: { [weak self] in
                             self?.popover.performClose(nil)
                             self?.openWeeklyReport()
+                        },
+                        onShowDailyReport: { [weak self] in
+                            self?.popover.performClose(nil)
+                            self?.openDailyMeetingReport()
                         },
                         onQuit: {
                             NSApplication.shared.terminate(nil)
@@ -685,6 +698,43 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         }
     }
 
+    private func openDailyMeetingReport() {
+        Task {
+            await MainActor.run {
+                // Get default date range (09:00 last workday → 09:00 today)
+                let defaultStart = WorkdayCalculator.lastWorkdayAt(hour: 9, minute: 0)
+                let defaultEnd = Date()
+
+                let reportView = DailyMeetingReportView(
+                    defaultStartDate: defaultStart,
+                    defaultEndDate: defaultEnd,
+                    onGenerateReport: { [weak self] startDate, endDate in
+                        await self?.generateReport(from: startDate, to: endDate)
+                    },
+                    aiAnalyzer: aiAnalyzer,
+                    storageManager: storageManager,
+                    onClose: { [weak self] in
+                        self?.dailyReportWindow?.close()
+                        self?.dailyReportWindow = nil
+                    }
+                )
+
+                dailyReportWindow = NSWindow(
+                    contentRect: NSRect(x: 0, y: 0, width: 600, height: 750),
+                    styleMask: [.titled, .closable, .resizable],
+                    backing: .buffered,
+                    defer: false
+                )
+                dailyReportWindow?.center()
+                dailyReportWindow?.title = "Daily Meeting Report"
+                dailyReportWindow?.contentView = NSHostingView(rootView: reportView)
+                dailyReportWindow?.isReleasedWhenClosed = false
+                dailyReportWindow?.makeKeyAndOrderFront(nil)
+                NSApp.activate(ignoringOtherApps: true)
+            }
+        }
+    }
+
     private func fetchEventsForReport(from startDate: Date, to endDate: Date) async throws -> [CalendarEvent] {
         let preferences = storageManager.loadPreferences()
         guard let calendarId = preferences.selectedCalendarId else {
@@ -708,13 +758,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         return validEvents
     }
 
-    private func generateReport(from startDate: Date, to endDate: Date) async -> WeeklyReport? {
+    private func generateReport(from startDate: Date, to endDate: Date) async -> TimeReport? {
         do {
             print("📊 Generating report from \(startDate) to \(endDate)")
             let events = try await fetchEventsForReport(from: startDate, to: endDate)
             print("   Found \(events.count) valid events")
 
-            let reportGenerator = WeeklyReportGenerator(timeCalculator: timeCalculator)
+            let reportGenerator = TimeReportGenerator(timeCalculator: timeCalculator)
             let report = reportGenerator.generateReport(from: events, startDate: startDate, endDate: endDate)
             print("   Generated report with \(report.firstLevelGroups.count) top-level groups")
 

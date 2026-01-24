@@ -13,6 +13,9 @@ struct ConfigurationSnapshot {
     let clientId: String?
     let tenantId: String?
     let accessToken: String?
+    let azureOpenAIEndpoint: String?
+    let azureOpenAIApiKey: String?
+    let azureOpenAIDeploymentName: String?
 
     var hasConfiguration: Bool {
         return clientId != nil && tenantId != nil
@@ -20,6 +23,10 @@ struct ConfigurationSnapshot {
 
     var hasExistingToken: Bool {
         return accessToken != nil
+    }
+
+    var hasAzureOpenAIConfiguration: Bool {
+        return azureOpenAIEndpoint != nil && azureOpenAIApiKey != nil && azureOpenAIDeploymentName != nil
     }
 }
 
@@ -113,6 +120,44 @@ class StorageManager {
         _ = keychain.deleteConfigurationBundle()
     }
 
+    // MARK: - Azure OpenAI Configuration Management
+
+    func saveAzureOpenAIConfig(_ config: AzureOpenAIConfiguration) -> Bool {
+        let success = keychain.save(config.endpoint, forKey: AzureOpenAIKeys.endpoint) &&
+                     keychain.save(config.apiKey, forKey: AzureOpenAIKeys.apiKey) &&
+                     keychain.save(config.deploymentName, forKey: AzureOpenAIKeys.deploymentName)
+
+        // Update the bundle to keep it in sync
+        if success {
+            updateConfigurationBundle()
+        }
+
+        return success
+    }
+
+    func loadAzureOpenAIConfig() -> AzureOpenAIConfiguration? {
+        guard let endpoint = keychain.loadString(forKey: AzureOpenAIKeys.endpoint),
+              let apiKey = keychain.loadString(forKey: AzureOpenAIKeys.apiKey),
+              let deploymentName = keychain.loadString(forKey: AzureOpenAIKeys.deploymentName) else {
+            return nil
+        }
+
+        return AzureOpenAIConfiguration(
+            endpoint: endpoint,
+            apiKey: apiKey,
+            deploymentName: deploymentName
+        )
+    }
+
+    func deleteAzureOpenAIConfig() {
+        _ = keychain.delete(forKey: AzureOpenAIKeys.endpoint)
+        _ = keychain.delete(forKey: AzureOpenAIKeys.apiKey)
+        _ = keychain.delete(forKey: AzureOpenAIKeys.deploymentName)
+
+        // Update the bundle
+        updateConfigurationBundle()
+    }
+
     // MARK: - Bundle Synchronization
 
     /// Update the configuration bundle to stay in sync with individual items
@@ -121,7 +166,10 @@ class StorageManager {
         let bundle = KeychainConfigurationBundle(
             clientId: loadClientId(),
             tenantId: loadTenantId(),
-            accessToken: loadAccessToken()
+            accessToken: loadAccessToken(),
+            azureOpenAIEndpoint: keychain.loadString(forKey: AzureOpenAIKeys.endpoint),
+            azureOpenAIApiKey: keychain.loadString(forKey: AzureOpenAIKeys.apiKey),
+            azureOpenAIDeploymentName: keychain.loadString(forKey: AzureOpenAIKeys.deploymentName)
         )
         _ = keychain.saveConfigurationBundle(bundle)
     }
@@ -139,26 +187,36 @@ class StorageManager {
             print("   Client ID: \(bundle.clientId != nil ? "present" : "missing")")
             print("   Tenant ID: \(bundle.tenantId != nil ? "present" : "missing")")
             print("   Access Token: \(bundle.accessToken != nil ? "present" : "missing")")
+            print("   Azure OpenAI: \(bundle.azureOpenAIEndpoint != nil ? "configured" : "not configured")")
 
             return ConfigurationSnapshot(
                 clientId: bundle.clientId,
                 tenantId: bundle.tenantId,
-                accessToken: bundle.accessToken
+                accessToken: bundle.accessToken,
+                azureOpenAIEndpoint: bundle.azureOpenAIEndpoint,
+                azureOpenAIApiKey: bundle.azureOpenAIApiKey,
+                azureOpenAIDeploymentName: bundle.azureOpenAIDeploymentName
             )
         }
 
-        // Fallback: load from separate items (old approach - three prompts)
+        // Fallback: load from separate items (old approach - multiple prompts)
         // This happens on first launch or if bundle doesn't exist yet
         print("   ⚠️  No bundle found, loading from separate items (will trigger migration)")
         let clientId = loadClientId()
         let tenantId = loadTenantId()
         let accessToken = loadAccessToken()
+        let azureEndpoint = keychain.loadString(forKey: AzureOpenAIKeys.endpoint)
+        let azureApiKey = keychain.loadString(forKey: AzureOpenAIKeys.apiKey)
+        let azureDeployment = keychain.loadString(forKey: AzureOpenAIKeys.deploymentName)
 
         // Migrate to bundle immediately to avoid future prompts
         let bundle = KeychainConfigurationBundle(
             clientId: clientId,
             tenantId: tenantId,
-            accessToken: accessToken
+            accessToken: accessToken,
+            azureOpenAIEndpoint: azureEndpoint,
+            azureOpenAIApiKey: azureApiKey,
+            azureOpenAIDeploymentName: azureDeployment
         )
         _ = keychain.saveConfigurationBundle(bundle)
         print("   ✅ Migrated to configuration bundle for future launches")
@@ -166,11 +224,15 @@ class StorageManager {
         print("   Client ID: \(clientId != nil ? "present" : "missing")")
         print("   Tenant ID: \(tenantId != nil ? "present" : "missing")")
         print("   Access Token: \(accessToken != nil ? "present" : "missing")")
+        print("   Azure OpenAI: \(azureEndpoint != nil ? "configured" : "not configured")")
 
         return ConfigurationSnapshot(
             clientId: clientId,
             tenantId: tenantId,
-            accessToken: accessToken
+            accessToken: accessToken,
+            azureOpenAIEndpoint: azureEndpoint,
+            azureOpenAIApiKey: azureApiKey,
+            azureOpenAIDeploymentName: azureDeployment
         )
     }
 

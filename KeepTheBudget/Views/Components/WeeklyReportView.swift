@@ -11,12 +11,12 @@ import AppKit
 struct WeeklyReportView: View {
     let defaultStartDate: Date
     let defaultEndDate: Date
-    let onGenerateReport: (Date, Date) async -> WeeklyReport?
+    let onGenerateReport: (Date, Date) async -> TimeReport?
     let onClose: () -> Void
 
     @State private var startDate: Date
     @State private var endDate: Date
-    @State private var report: WeeklyReport?
+    @State private var report: TimeReport?
     @State private var expandedFirstLevel: Set<UUID> = []
     @State private var copiedToClipboard = false
     @State private var isGenerating = false
@@ -24,7 +24,7 @@ struct WeeklyReportView: View {
     init(
         defaultStartDate: Date,
         defaultEndDate: Date,
-        onGenerateReport: @escaping (Date, Date) async -> WeeklyReport?,
+        onGenerateReport: @escaping (Date, Date) async -> TimeReport?,
         onClose: @escaping () -> Void
     ) {
         self.defaultStartDate = defaultStartDate
@@ -98,7 +98,7 @@ struct WeeklyReportView: View {
 
     // MARK: - Report Content
 
-    private func reportContentView(_ report: WeeklyReport) -> some View {
+    private func reportContentView(_ report: TimeReport) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 // Header
@@ -127,10 +127,11 @@ struct WeeklyReportView: View {
         }
     }
 
-    private func reportHeaderView(_ report: WeeklyReport) -> some View {
+    private func reportHeaderView(_ report: TimeReport) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(formatDateRange(start: report.weekStart, end: report.weekEnd))
-                .font(.headline)
+            Text(formatDateRange(start: report.startDate, end: report.endDate))
+                .font(.title3)
+                .fontWeight(.semibold)
 
             HStack {
                 Text("Total:")
@@ -263,10 +264,12 @@ struct FirstLevelGroupView: View {
                         .frame(width: 12)
 
                     Text(group.name)
-                        .font(.headline)
+                        .font(.title3)
+                        .fontWeight(.semibold)
                         .foregroundColor(.primary)
 
                     Text("(\(TimeFormatter.format(minutes: group.totalMinutes)))")
+                        .font(.body)
                         .foregroundColor(.secondary)
 
                     Spacer()
@@ -299,11 +302,11 @@ struct SecondLevelGroupView: View {
             // Second level name and time
             HStack {
                 Text("- \(group.name)")
-                    .font(.subheadline)
+                    .font(.body)
                     .fontWeight(.medium)
 
                 Text("(\(TimeFormatter.format(minutes: group.roundedMinutes)))")
-                    .font(.subheadline)
+                    .font(.body)
                     .foregroundColor(.secondary)
             }
 
@@ -311,7 +314,7 @@ struct SecondLevelGroupView: View {
             if !group.descriptions.isEmpty {
                 let combinedDescriptions = group.descriptions.joined(separator: ", ")
                 Text("• \(combinedDescriptions)")
-                    .font(.caption)
+                    .font(.subheadline)
                     .foregroundColor(.secondary)
                     .padding(.leading, 12)
             }

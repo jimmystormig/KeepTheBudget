@@ -36,6 +36,12 @@ enum KeychainKeys {
     static let tenantId = "msal_tenant_id"
 }
 
+enum AzureOpenAIKeys {
+    static let endpoint = "azure_openai_endpoint"
+    static let apiKey = "azure_openai_api_key"
+    static let deploymentName = "azure_openai_deployment"
+}
+
 enum UserDefaultsKeys {
     static let preferences = "app_preferences"
     static let deltaLink = "calendar_delta_link"

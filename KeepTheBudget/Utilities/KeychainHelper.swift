@@ -10,11 +10,14 @@ import Security
 import LocalAuthentication
 
 /// Bundle all configuration values into a single keychain item
-/// This ensures only ONE keychain prompt instead of three separate ones
+/// This ensures only ONE keychain prompt instead of multiple separate ones
 struct KeychainConfigurationBundle: Codable {
     let clientId: String?
     let tenantId: String?
     let accessToken: String?
+    let azureOpenAIEndpoint: String?
+    let azureOpenAIApiKey: String?
+    let azureOpenAIDeploymentName: String?
 }
 
 class KeychainHelper {

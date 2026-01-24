@@ -15,6 +15,7 @@ struct PopoverView: View {
     let onRefresh: () -> Void
     let onOpenSettings: () -> Void
     let onShowReport: () -> Void
+    let onShowDailyReport: () -> Void
     let onQuit: () -> Void
     let onReauthenticate: () -> Void
 
@@ -183,6 +184,8 @@ struct PopoverView: View {
                 MenuButton(icon: "arrow.clockwise", title: "Refresh Now", action: onRefresh)
                 Divider()
                 MenuButton(icon: "doc.text", title: "Weekly Report", action: onShowReport)
+                Divider()
+                MenuButton(icon: "doc.text.magnifyingglass", title: "Daily Meeting Report", action: onShowDailyReport)
                 Divider()
                 MenuButton(icon: "gear", title: "Preferences", action: onOpenSettings)
                 Divider()

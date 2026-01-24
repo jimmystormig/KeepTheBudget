@@ -43,6 +43,9 @@ struct SettingsView: View {
                 TabButton(title: "About", icon: "info.circle", isSelected: selectedTab == 4) {
                     selectedTab = 4
                 }
+                TabButton(title: "AI", icon: "brain", isSelected: selectedTab == 5) {
+                    selectedTab = 5
+                }
             }
             .frame(height: 44)
             .background(Color(NSColor.controlBackgroundColor))
@@ -62,12 +65,14 @@ struct SettingsView: View {
                     ConfigurationTab(storageManager: storageManager, authManager: authManager)
                 case 4:
                     AboutTab()
+                case 5:
+                    AISettingsTab(storageManager: storageManager)
                 default:
                     GoalsTab(preferences: $preferences, storageManager: storageManager)
                 }
             }
         }
-        .frame(width: 600, height: 450)
+        .frame(width: 600, height: 500)
     }
 }
 
