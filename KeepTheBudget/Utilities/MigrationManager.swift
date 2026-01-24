@@ -12,15 +12,22 @@ struct MigrationManager {
     /// Only migrates if:
     /// 1. Configuration is not already in Keychain
     /// 2. User has existing tokens (indicates existing installation)
-    static func migrateConfigurationIfNeeded(storageManager: StorageManager) {
+    ///
+    /// - Parameters:
+    ///   - storageManager: Storage manager for saving configuration
+    ///   - snapshot: Pre-loaded configuration snapshot to avoid redundant keychain access
+    static func migrateConfigurationIfNeeded(
+        storageManager: StorageManager,
+        snapshot: ConfigurationSnapshot
+    ) {
         // Already migrated
-        guard !storageManager.hasConfiguration() else {
+        guard !snapshot.hasConfiguration else {
             print("ℹ️  Configuration already exists in Keychain")
             return
         }
 
         // Only migrate if existing installation (has tokens)
-        guard storageManager.loadAccessToken() != nil else {
+        guard snapshot.hasExistingToken else {
             print("ℹ️  New installation - no migration needed")
             return
         }

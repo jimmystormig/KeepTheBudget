@@ -7,11 +7,21 @@
 
 import Foundation
 import Security
+import LocalAuthentication
+
+/// Bundle all configuration values into a single keychain item
+/// This ensures only ONE keychain prompt instead of three separate ones
+struct KeychainConfigurationBundle: Codable {
+    let clientId: String?
+    let tenantId: String?
+    let accessToken: String?
+}
 
 class KeychainHelper {
     static let shared = KeychainHelper()
 
     private let service: String
+    private let configBundleKey = "configuration_bundle"
 
     private init() {
         self.service = Bundle.main.bundleIdentifier ?? "com.nexer.KeepTheBudget"
@@ -78,5 +88,39 @@ class KeychainHelper {
 
         let status = SecItemDelete(query as CFDictionary)
         return status == errSecSuccess || status == errSecItemNotFound
+    }
+
+    // MARK: - Configuration Bundle (Single Keychain Item)
+
+    /// Save configuration bundle as a single keychain item
+    /// This results in only ONE keychain prompt instead of three
+    func saveConfigurationBundle(_ bundle: KeychainConfigurationBundle) -> Bool {
+        guard let data = try? JSONEncoder().encode(bundle) else {
+            print("❌ Failed to encode configuration bundle")
+            return false
+        }
+
+        return save(data, forKey: configBundleKey)
+    }
+
+    /// Load configuration bundle from single keychain item
+    /// This results in only ONE keychain prompt
+    func loadConfigurationBundle() -> KeychainConfigurationBundle? {
+        guard let data = load(forKey: configBundleKey) else {
+            print("   No configuration bundle found in keychain")
+            return nil
+        }
+
+        guard let bundle = try? JSONDecoder().decode(KeychainConfigurationBundle.self, from: data) else {
+            print("❌ Failed to decode configuration bundle")
+            return nil
+        }
+
+        return bundle
+    }
+
+    /// Delete configuration bundle
+    func deleteConfigurationBundle() -> Bool {
+        return delete(forKey: configBundleKey)
     }
 }

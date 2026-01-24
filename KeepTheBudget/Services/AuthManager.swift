@@ -41,24 +41,42 @@ class AuthManager {
 
     /// Initialize AuthManager with configuration from Keychain
     /// Must be called before any authentication operations
-    func initialize() throws {
-        guard let clientId = storageManager.loadClientId() else {
-            throw AuthError.missingConfiguration("Client ID not configured")
+    ///
+    /// - Parameters:
+    ///   - clientId: Pre-loaded Client ID (optional, loads from storage if nil)
+    ///   - tenantId: Pre-loaded Tenant ID (optional, loads from storage if nil)
+    func initialize(clientId: String? = nil, tenantId: String? = nil) throws {
+        // Use provided values or load from storage
+        let finalClientId: String
+        let finalTenantId: String
+
+        if let providedClientId = clientId, let providedTenantId = tenantId {
+            print("🔧 Using pre-loaded configuration")
+            finalClientId = providedClientId
+            finalTenantId = providedTenantId
+        } else {
+            print("🔧 Loading configuration from storage")
+            guard let loadedClientId = storageManager.loadClientId() else {
+                throw AuthError.missingConfiguration("Client ID not configured")
+            }
+
+            guard let loadedTenantId = storageManager.loadTenantId() else {
+                throw AuthError.missingConfiguration("Tenant ID not configured")
+            }
+
+            finalClientId = loadedClientId
+            finalTenantId = loadedTenantId
         }
 
-        guard let tenantId = storageManager.loadTenantId() else {
-            throw AuthError.missingConfiguration("Tenant ID not configured")
-        }
+        self.clientId = finalClientId
+        self.tenantId = finalTenantId
 
-        self.clientId = clientId
-        self.tenantId = tenantId
-
-        let authorityURL = "https://login.microsoftonline.com/\(tenantId)"
+        let authorityURL = "https://login.microsoftonline.com/\(finalTenantId)"
         self.authority = try MSALAuthority(url: URL(string: authorityURL)!)
 
         print("🔧 Initializing AuthManager with:")
-        print("   Client ID: \(clientId)")
-        print("   Tenant ID: \(tenantId)")
+        print("   Client ID: \(finalClientId)")
+        print("   Tenant ID: \(finalTenantId)")
 
         try setupMSAL()
     }

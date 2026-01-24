@@ -43,12 +43,19 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         // Setup popover
         setupPopover()
 
-        // Auto-migrate existing users
-        MigrationManager.migrateConfigurationIfNeeded(storageManager: storageManager)
+        // CRITICAL: Load all keychain configuration in ONE operation to minimize prompts
+        print("🔑 Loading keychain configuration snapshot...")
+        let configSnapshot = storageManager.loadConfigurationSnapshot()
+
+        // Auto-migrate existing users using the snapshot
+        MigrationManager.migrateConfigurationIfNeeded(
+            storageManager: storageManager,
+            snapshot: configSnapshot
+        )
 
         // Check configuration status FIRST
         Task {
-            await checkConfigurationAndInitialize()
+            await checkConfigurationAndInitialize(configSnapshot: configSnapshot)
         }
     }
 
@@ -68,11 +75,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         popover.behavior = .transient
     }
 
-    private func checkConfigurationAndInitialize() async {
+    private func checkConfigurationAndInitialize(configSnapshot: ConfigurationSnapshot) async {
         print("🔍 checkConfigurationAndInitialize() called")
 
-        // Check if MSAL configuration exists
-        let hasConfig = storageManager.hasConfiguration()
+        // Use snapshot to check configuration (no additional keychain access)
+        let hasConfig = configSnapshot.hasConfiguration
         print("   Has configuration: \(hasConfig)")
 
         guard hasConfig else {
@@ -81,13 +88,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             return
         }
 
-        // Initialize AuthManager with config
+        // Initialize AuthManager with pre-loaded config from snapshot
         print("   → Creating AuthManager")
         authManager = AuthManager(storageManager: storageManager)
 
         do {
-            print("   → Initializing AuthManager")
-            try authManager.initialize()
+            print("   → Initializing AuthManager with snapshot values")
+            try authManager.initialize(
+                clientId: configSnapshot.clientId,
+                tenantId: configSnapshot.tenantId
+            )
 
             // Initialize GraphAPIService
             print("   → Creating GraphAPIService")
@@ -130,9 +140,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
                 self?.configWindow?.close()
                 self?.configWindow = nil
 
-                // Restart initialization
+                // Restart initialization with fresh snapshot
                 Task {
-                    await self?.checkConfigurationAndInitialize()
+                    guard let self = self else { return }
+                    let configSnapshot = self.storageManager.loadConfigurationSnapshot()
+                    await self.checkConfigurationAndInitialize(configSnapshot: configSnapshot)
                 }
             }
 
