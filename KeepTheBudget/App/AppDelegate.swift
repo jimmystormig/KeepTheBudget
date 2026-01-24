@@ -16,6 +16,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     private var authWindow: NSWindow?
     private var calendarWindow: NSWindow?
     private var configWindow: NSWindow?
+    private var reportWindow: NSWindow?
 
     // Services
     private var authManager: AuthManager!
@@ -180,6 +181,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
                 onOpenSettings: { [weak self] in
                     self?.openSettings()
                 },
+                onShowReport: { [weak self] in
+                    self?.popover.performClose(nil)
+                    self?.openWeeklyReport()
+                },
                 onQuit: {
                     NSApplication.shared.terminate(nil)
                 },
@@ -210,6 +215,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
                         },
                         onOpenSettings: { [weak self] in
                             self?.openSettings()
+                        },
+                        onShowReport: { [weak self] in
+                            self?.popover.performClose(nil)
+                            self?.openWeeklyReport()
                         },
                         onQuit: {
                             NSApplication.shared.terminate(nil)
@@ -640,6 +649,80 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
 
         settingsWindow?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func openWeeklyReport() {
+        Task {
+            await MainActor.run {
+                // Get default date range (current week)
+                let (weekStart, weekEnd) = timeCalculator.getWeeklyRange()
+
+                let reportView = WeeklyReportView(
+                    defaultStartDate: weekStart,
+                    defaultEndDate: weekEnd,
+                    onGenerateReport: { [weak self] startDate, endDate in
+                        await self?.generateReport(from: startDate, to: endDate)
+                    },
+                    onClose: { [weak self] in
+                        self?.reportWindow?.close()
+                        self?.reportWindow = nil
+                    }
+                )
+
+                reportWindow = NSWindow(
+                    contentRect: NSRect(x: 0, y: 0, width: 550, height: 650),
+                    styleMask: [.titled, .closable, .resizable],
+                    backing: .buffered,
+                    defer: false
+                )
+                reportWindow?.center()
+                reportWindow?.title = "Weekly Report"
+                reportWindow?.contentView = NSHostingView(rootView: reportView)
+                reportWindow?.isReleasedWhenClosed = false
+                reportWindow?.makeKeyAndOrderFront(nil)
+                NSApp.activate(ignoringOtherApps: true)
+            }
+        }
+    }
+
+    private func fetchEventsForReport(from startDate: Date, to endDate: Date) async throws -> [CalendarEvent] {
+        let preferences = storageManager.loadPreferences()
+        guard let calendarId = preferences.selectedCalendarId else {
+            throw NSError(domain: "KeepTheBudget", code: 1, userInfo: [NSLocalizedDescriptionKey: "No calendar selected"])
+        }
+
+        // Get user email for filtering
+        let userProfile = try await graphAPIService.fetchUserProfile()
+
+        // Fetch events for the date range
+        let events = try await graphAPIService.fetchEvents(
+            calendarId: calendarId,
+            from: startDate,
+            to: endDate
+        )
+
+        // Filter to only user's own events with valid tracking format
+        let ownEvents = events.filter { $0.organizerEmail.caseInsensitiveCompare(userProfile.mail) == .orderedSame }
+        let validEvents = ownEvents.filter { $0.isValidForTracking }
+
+        return validEvents
+    }
+
+    private func generateReport(from startDate: Date, to endDate: Date) async -> WeeklyReport? {
+        do {
+            print("📊 Generating report from \(startDate) to \(endDate)")
+            let events = try await fetchEventsForReport(from: startDate, to: endDate)
+            print("   Found \(events.count) valid events")
+
+            let reportGenerator = WeeklyReportGenerator(timeCalculator: timeCalculator)
+            let report = reportGenerator.generateReport(from: events, startDate: startDate, endDate: endDate)
+            print("   Generated report with \(report.firstLevelGroups.count) top-level groups")
+
+            return report
+        } catch {
+            print("❌ Failed to generate report: \(error.localizedDescription)")
+            return nil
+        }
     }
 
     // Handle URL callbacks from authentication

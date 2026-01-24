@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		01AB00EC9D17520FA732DC2A /* WeeklyReportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D77A0772F68DA0B8F140E757 /* WeeklyReportView.swift */; };
 		01E97FD25A6920582D08680F /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFA54EC4D4D3C73AEFF0ECFD /* Constants.swift */; };
 		033176AE831ACAD15F688398 /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FE52DDBA411B0FA5AF32122 /* KeychainHelper.swift */; };
 		0AA0DD56FCE2B923A1B50BBC /* UpdateScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 243D319E38C21C7D0B3D8547 /* UpdateScheduler.swift */; };
@@ -22,6 +23,7 @@
 		656C83497B3994D54E2D7D4C /* AppPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 867F21DA359BEB77E128CE7B /* AppPreferences.swift */; };
 		6FA47B77AD091BDFB4738C14 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15FB6CC30B83E2187A70EFF7 /* SettingsView.swift */; };
 		7D9E1BC0A838DDC61CCFAA6C /* CalendarEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = D17C1653452895D4161EA6C8 /* CalendarEvent.swift */; };
+		81256090B041A15939286793 /* WeeklyReportGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15CDA23CFEC17CFD3F7A07B5 /* WeeklyReportGenerator.swift */; };
 		872B68F77790FAD967A2A830 /* KeepTheBudgetApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6FE8A6CD47CF370FC862EB6 /* KeepTheBudgetApp.swift */; };
 		8B0358FDE9C466E46FBFB0B5 /* ProgressBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DA4AE6328C89A1E343018CB /* ProgressBar.swift */; };
 		92DD5C716239449E077EA94A /* DateExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1383747AA25BD7758E826757 /* DateExtensions.swift */; };
@@ -37,10 +39,12 @@
 		E908558AB808F94A97B0CEA7 /* UserProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD016D6D441D7E72C15FFC12 /* UserProfile.swift */; };
 		F35EE69D65D484C6FAFEFCD2 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFFC9AC4B789784F20AB8979 /* AppDelegate.swift */; };
 		F6E5AF15FB3DEC8E6C47641E /* PopoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72E42341BDF4E09794A686F5 /* PopoverView.swift */; };
+		FD678E292F086605B21AA4C1 /* WeeklyReport.swift in Sources */ = {isa = PBXBuildFile; fileRef = C72B353CE0D1203C18C60AD0 /* WeeklyReport.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		1383747AA25BD7758E826757 /* DateExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateExtensions.swift; sourceTree = "<group>"; };
+		15CDA23CFEC17CFD3F7A07B5 /* WeeklyReportGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklyReportGenerator.swift; sourceTree = "<group>"; };
 		15FB6CC30B83E2187A70EFF7 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		1E017208212F7B5EEE618456 /* TimeSummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeSummary.swift; sourceTree = "<group>"; };
 		243D319E38C21C7D0B3D8547 /* UpdateScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateScheduler.swift; sourceTree = "<group>"; };
@@ -62,10 +66,12 @@
 		A1DB12B64501C290A091B1C3 /* MigrationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MigrationManager.swift; sourceTree = "<group>"; };
 		A9901D724A1A3385066F009D /* StorageManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageManager.swift; sourceTree = "<group>"; };
 		B6FE8A6CD47CF370FC862EB6 /* KeepTheBudgetApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeepTheBudgetApp.swift; sourceTree = "<group>"; };
+		C72B353CE0D1203C18C60AD0 /* WeeklyReport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklyReport.swift; sourceTree = "<group>"; };
 		CB50E29B2BCB400E5357843C /* TimeFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeFormatter.swift; sourceTree = "<group>"; };
 		CFFC9AC4B789784F20AB8979 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		D17C1653452895D4161EA6C8 /* CalendarEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarEvent.swift; sourceTree = "<group>"; };
 		D226D2AC79DE3DF9020C6526 /* CategorySummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategorySummary.swift; sourceTree = "<group>"; };
+		D77A0772F68DA0B8F140E757 /* WeeklyReportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklyReportView.swift; sourceTree = "<group>"; };
 		DC62CAC6A12B775938B3C078 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		DFFC086B012A7BE1B62A586C /* KeepTheBudget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = KeepTheBudget.entitlements; sourceTree = "<group>"; };
 		ED11956CC259F1EACC65545F /* TimeCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeCalculator.swift; sourceTree = "<group>"; };
@@ -112,6 +118,7 @@
 			children = (
 				4B5D478ABC4756F226EC78BB /* CategoryBreakdownView.swift */,
 				5DA4AE6328C89A1E343018CB /* ProgressBar.swift */,
+				D77A0772F68DA0B8F140E757 /* WeeklyReportView.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -127,6 +134,7 @@
 				58724CDBAD0134100021F978 /* GoalStatus.swift */,
 				1E017208212F7B5EEE618456 /* TimeSummary.swift */,
 				FD016D6D441D7E72C15FFC12 /* UserProfile.swift */,
+				C72B353CE0D1203C18C60AD0 /* WeeklyReport.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -168,6 +176,7 @@
 				A9901D724A1A3385066F009D /* StorageManager.swift */,
 				ED11956CC259F1EACC65545F /* TimeCalculator.swift */,
 				243D319E38C21C7D0B3D8547 /* UpdateScheduler.swift */,
+				15CDA23CFEC17CFD3F7A07B5 /* WeeklyReportGenerator.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -294,6 +303,9 @@
 				219AEC1899B3BA136772ADEC /* TimeSummary.swift in Sources */,
 				0AA0DD56FCE2B923A1B50BBC /* UpdateScheduler.swift in Sources */,
 				E908558AB808F94A97B0CEA7 /* UserProfile.swift in Sources */,
+				FD678E292F086605B21AA4C1 /* WeeklyReport.swift in Sources */,
+				81256090B041A15939286793 /* WeeklyReportGenerator.swift in Sources */,
+				01AB00EC9D17520FA732DC2A /* WeeklyReportView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

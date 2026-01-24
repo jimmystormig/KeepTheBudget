@@ -14,6 +14,7 @@ struct PopoverView: View {
     let errorMessage: String?
     let onRefresh: () -> Void
     let onOpenSettings: () -> Void
+    let onShowReport: () -> Void
     let onQuit: () -> Void
     let onReauthenticate: () -> Void
 
@@ -180,6 +181,8 @@ struct PopoverView: View {
             // Action buttons
             VStack(spacing: 0) {
                 MenuButton(icon: "arrow.clockwise", title: "Refresh Now", action: onRefresh)
+                Divider()
+                MenuButton(icon: "doc.text", title: "Weekly Report", action: onShowReport)
                 Divider()
                 MenuButton(icon: "gear", title: "Preferences", action: onOpenSettings)
                 Divider()
