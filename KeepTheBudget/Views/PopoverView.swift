@@ -15,6 +15,7 @@ struct PopoverView: View {
     let onRefresh: () -> Void
     let onOpenSettings: () -> Void
     let onQuit: () -> Void
+    let onReauthenticate: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -133,6 +134,17 @@ struct PopoverView: View {
                             .font(.caption)
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
+
+                        // Show "Sign In Again" button if error suggests authentication issue
+                        if error.lowercased().contains("sign in") || error.lowercased().contains("expired") || error.lowercased().contains("session") {
+                            Button(action: onReauthenticate) {
+                                Text("Sign In Again")
+                                    .font(.caption)
+                                    .foregroundColor(.blue)
+                            }
+                            .buttonStyle(.plain)
+                            .padding(.top, 5)
+                        }
                     }
                     .padding()
                 }

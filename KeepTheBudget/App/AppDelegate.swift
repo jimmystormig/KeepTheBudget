@@ -9,7 +9,7 @@ import Cocoa
 import SwiftUI
 import MSAL
 
-class AppDelegate: NSObject, NSApplicationDelegate {
+class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     private var statusItem: NSStatusItem!
     private var popover: NSPopover!
     private var settingsWindow: NSWindow?
@@ -145,11 +145,40 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             configWindow?.center()
             configWindow?.title = "Setup Required"
             configWindow?.contentView = NSHostingView(rootView: configView)
+            configWindow?.isReleasedWhenClosed = false // Prevent premature deallocation
             configWindow?.makeKeyAndOrderFront(nil)
 
             // Disable close button until configured
             configWindow?.standardWindowButton(.closeButton)?.isEnabled = false
         }
+    }
+
+    private func updatePopoverContent() {
+        guard popover.isShown else { return }
+
+        popover.contentViewController = NSHostingController(
+            rootView: PopoverView(
+                timeSummary: timeSummary,
+                lastUpdateTime: lastUpdateTime,
+                isLoading: isLoading,
+                errorMessage: errorMessage,
+                onRefresh: { [weak self] in
+                    Task { await self?.refreshData() }
+                },
+                onOpenSettings: { [weak self] in
+                    self?.openSettings()
+                },
+                onQuit: {
+                    NSApplication.shared.terminate(nil)
+                },
+                onReauthenticate: { [weak self] in
+                    self?.popover.performClose(nil)
+                    Task { @MainActor in
+                        self?.showReauthenticationPrompt(error: AppError.authenticationExpired)
+                    }
+                }
+            )
+        )
     }
 
     @objc private func togglePopover() {
@@ -172,6 +201,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                         },
                         onQuit: {
                             NSApplication.shared.terminate(nil)
+                        },
+                        onReauthenticate: { [weak self] in
+                            self?.popover.performClose(nil)
+                            Task { @MainActor in
+                                self?.showReauthenticationPrompt(error: AppError.authenticationExpired)
+                            }
                         }
                     )
                 )
@@ -260,29 +295,41 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func showDeviceCodeFlow() async {
         await MainActor.run {
+            // Close any existing auth window first
+            if let existingWindow = authWindow {
+                existingWindow.close()
+                authWindow = nil
+            }
+
             let deviceCodeView = DeviceCodeView(authManager: authManager) { [weak self] success in
                 print("🎉 Auth callback - success: \(success)")
                 if success {
-                    // Close auth window
-                    self?.authWindow?.close()
-                    self?.authWindow = nil
+                    Task { @MainActor in
+                        // Close auth window on main thread
+                        self?.authWindow?.close()
+                        self?.authWindow = nil
 
-                    Task {
+                        // Small delay to ensure window cleanup completes
+                        try? await Task.sleep(nanoseconds: 200_000_000) // 0.2 seconds
+
                         await self?.showCalendarSelection()
                     }
                 }
             }
 
-            authWindow = NSWindow(
+            let window = NSWindow(
                 contentRect: NSRect(x: 0, y: 0, width: 400, height: 300),
                 styleMask: [.titled, .closable],
                 backing: .buffered,
                 defer: false
             )
-            authWindow?.center()
-            authWindow?.title = "Sign In to Office 365"
-            authWindow?.contentView = NSHostingView(rootView: deviceCodeView)
-            authWindow?.makeKeyAndOrderFront(nil)
+            window.center()
+            window.title = "Sign In to Office 365"
+            window.contentView = NSHostingView(rootView: deviceCodeView)
+            window.isReleasedWhenClosed = false // Prevent premature deallocation
+            window.makeKeyAndOrderFront(nil)
+
+            authWindow = window
         }
     }
 
@@ -334,6 +381,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 window.center()
                 window.title = "Select Calendar"
                 window.contentView = NSHostingView(rootView: selectionView)
+                window.isReleasedWhenClosed = false // Prevent premature deallocation
                 window.makeKeyAndOrderFront(nil)
 
                 calendarWindow = window
@@ -369,6 +417,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         print("🔄 refreshData called")
         await MainActor.run {
             isLoading = true
+            updatePopoverContent()
         }
 
         do {
@@ -464,14 +513,77 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
                 // Update menu bar display
                 updateStatusItemDisplay(summary: summary, isLoading: false)
+
+                // Update popover if it's open
+                updatePopoverContent()
             }
 
-        } catch {
+        } catch let error as AppError {
+            // Handle structured errors
+            print("   ❌ AppError: \(error.errorDescription ?? "Unknown error")")
+            print("   📝 User-facing message: \(error.userFacingMessage)")
+            print("   🔐 Can retry with reauth: \(error.canRetryWithReauth)")
             await MainActor.run {
-                errorMessage = error.localizedDescription
+                timeSummary = nil  // Clear old data to show error
+                errorMessage = error.userFacingMessage
                 isLoading = false
                 updateStatusItemDisplay(summary: nil, isLoading: false)
+
+                print("   📱 Error message set to: \(self.errorMessage ?? "nil")")
+                print("   🔄 Updating popover content...")
+                // Update popover if it's open
+                updatePopoverContent()
+
+                if error.canRetryWithReauth {
+                    print("   🔐 Authentication error detected - offering re-auth")
+                    showReauthenticationPrompt(error: error)
+                }
             }
+        } catch {
+            // Handle unexpected errors
+            print("   ❌ Unexpected error: \(error.localizedDescription)")
+            print("   ❌ Error type: \(type(of: error))")
+            print("   ❌ Error domain: \((error as NSError).domain)")
+            await MainActor.run {
+                timeSummary = nil  // Clear old data to show error
+                errorMessage = "Unexpected error: \(error.localizedDescription)"
+                isLoading = false
+                updateStatusItemDisplay(summary: nil, isLoading: false)
+
+                print("   📱 Error message set to: \(self.errorMessage ?? "nil")")
+                // Update popover if it's open
+                updatePopoverContent()
+            }
+        }
+    }
+
+    @MainActor
+    private func showReauthenticationPrompt(error: AppError) {
+        let alert = NSAlert()
+        alert.messageText = "Authentication Required"
+        alert.informativeText = error.userFacingMessage
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Sign In Again")
+        alert.addButton(withTitle: "Cancel")
+
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            // User clicked "Sign In Again"
+            print("🔐 User requested re-authentication")
+
+            // Close any existing windows first to avoid conflicts
+            authWindow?.close()
+            authWindow = nil
+            calendarWindow?.close()
+            calendarWindow = nil
+
+            authManager.signOut()
+            Task {
+                await self.showDeviceCodeFlow()
+            }
+        } else {
+            // User clicked "Cancel"
+            print("   User cancelled re-authentication")
         }
     }
 

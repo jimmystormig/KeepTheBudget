@@ -11,6 +11,7 @@ import MSAL
 enum AuthError: LocalizedError {
     case missingConfiguration(String)
     case notInitialized
+    case sessionExpired
 
     var errorDescription: String? {
         switch self {
@@ -18,6 +19,8 @@ enum AuthError: LocalizedError {
             return "Configuration Error: \(msg)"
         case .notInitialized:
             return "AuthManager not initialized"
+        case .sessionExpired:
+            return "Session expired - no account available"
         }
     }
 }
@@ -146,7 +149,63 @@ class AuthManager {
 
         // Try to refresh the token
         print("   🔄 Attempting token refresh...")
-        return try await refreshAccessToken()
+        do {
+            return try await refreshAccessToken()
+        } catch {
+            print("   ❌ getValidAccessToken: refreshAccessToken threw error")
+            print("       Error type: \(type(of: error))")
+            print("       Error: \(error)")
+            throw error
+        }
+    }
+
+    /// Invalidate cached token to force refresh
+    func invalidateCachedToken() {
+        print("🔄 Invalidating cached token")
+        storageManager.deleteAllTokens()
+    }
+
+    /// Force token refresh, bypassing validity check
+    /// Used when HTTP 401 received to attempt recovery
+    func forceTokenRefresh() async throws -> String {
+        print("🔄 Force token refresh requested")
+
+        guard isInitialized() else {
+            print("   ❌ Not initialized!")
+            throw AuthError.notInitialized
+        }
+
+        // Invalidate cached token first
+        invalidateCachedToken()
+
+        // Attempt silent refresh
+        do {
+            let token = try await refreshAccessToken()
+            print("✅ Force refresh successful")
+            return token
+        } catch {
+            print("❌ Force refresh failed: \(error.localizedDescription)")
+
+            // Interpret MSAL error codes
+            let nsError = error as NSError
+            print("   Error domain: \(nsError.domain)")
+            print("   Error code: \(nsError.code)")
+
+            if nsError.domain == "MSALErrorDomain" {
+                switch nsError.code {
+                case -42001:
+                    print("   → User interaction required (re-authentication needed)")
+                case -42002:
+                    print("   → Server declined scopes")
+                case -42003:
+                    print("   → Invalid grant (token revoked)")
+                default:
+                    print("   → MSAL error code: \(nsError.code)")
+                }
+            }
+
+            throw error
+        }
     }
 
     // MARK: - Interactive Authentication
@@ -227,9 +286,16 @@ class AuthManager {
         let accounts = try application.allAccounts()
         print("   Found \(accounts.count) accounts")
 
+        if accounts.isEmpty {
+            print("   ℹ️  No account found - this means MSAL cache was cleared or user never signed in")
+        }
+
         guard let account = accounts.first else {
             print("   ❌ No account found!")
-            throw NSError(domain: "AuthManager", code: 5, userInfo: [NSLocalizedDescriptionKey: "No account found"])
+            print("   🔐 Throwing AuthError.sessionExpired")
+            let error = AuthError.sessionExpired
+            print("       Error type before throw: \(type(of: error))")
+            throw error
         }
 
         print("   ✅ Using account: \(account.username ?? "unknown")")
@@ -239,14 +305,38 @@ class AuthManager {
         return try await withCheckedThrowingContinuation { continuation in
             application.acquireTokenSilent(with: parameters) { (result, error) in
                 if let error = error {
+                    print("   ❌ Silent refresh failed")
+                    let nsError = error as NSError
+                    print("   Error domain: \(nsError.domain)")
+                    print("   Error code: \(nsError.code)")
+                    print("   Error description: \(error.localizedDescription)")
+                    print("   User info: \(nsError.userInfo)")
+
+                    // Interpret common MSAL errors
+                    if nsError.domain == "MSALErrorDomain" {
+                        switch nsError.code {
+                        case -42001:
+                            print("   → User interaction required (re-authentication needed)")
+                        case -42002:
+                            print("   → Server declined scopes")
+                        case -42003:
+                            print("   → Invalid grant (token revoked)")
+                        default:
+                            break
+                        }
+                    }
+
                     continuation.resume(throwing: error)
                     return
                 }
 
                 guard let result = result else {
+                    print("   ❌ No result from silent refresh")
                     continuation.resume(throwing: NSError(domain: "AuthManager", code: 6, userInfo: [NSLocalizedDescriptionKey: "No result from silent refresh"]))
                     return
                 }
+
+                print("   ✅ Silent refresh successful")
 
                 // Update stored tokens
                 let accessToken = result.accessToken

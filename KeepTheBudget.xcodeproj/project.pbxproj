@@ -26,6 +26,7 @@
 		8B0358FDE9C466E46FBFB0B5 /* ProgressBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DA4AE6328C89A1E343018CB /* ProgressBar.swift */; };
 		92DD5C716239449E077EA94A /* DateExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1383747AA25BD7758E826757 /* DateExtensions.swift */; };
 		A6AC4E55078F0EB71DB44633 /* GraphAPIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50561898A92BAF8468562263 /* GraphAPIService.swift */; };
+		A80AC437FCBD76FFC98C01BA /* AppError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D9416ED900361823C79386E /* AppError.swift */; };
 		B82ED28B9984021E0E4B806E /* TimeFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB50E29B2BCB400E5357843C /* TimeFormatter.swift */; };
 		B85E3916537D75C7AE4E8A6D /* ConfigurationValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82418F7BD84E475D95CFB3AF /* ConfigurationValidator.swift */; };
 		BFF44EEA20E43A351BB80660 /* MigrationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1DB12B64501C290A091B1C3 /* MigrationManager.swift */; };
@@ -44,6 +45,7 @@
 		1E017208212F7B5EEE618456 /* TimeSummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeSummary.swift; sourceTree = "<group>"; };
 		243D319E38C21C7D0B3D8547 /* UpdateScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateScheduler.swift; sourceTree = "<group>"; };
 		3252E8680CFEEBE0D9A704F7 /* ConfigurationSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigurationSetupView.swift; sourceTree = "<group>"; };
+		3D9416ED900361823C79386E /* AppError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppError.swift; sourceTree = "<group>"; };
 		4B5D478ABC4756F226EC78BB /* CategoryBreakdownView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoryBreakdownView.swift; sourceTree = "<group>"; };
 		50561898A92BAF8468562263 /* GraphAPIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphAPIService.swift; sourceTree = "<group>"; };
 		58724CDBAD0134100021F978 /* GoalStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoalStatus.swift; sourceTree = "<group>"; };
@@ -117,6 +119,7 @@
 		9424892FF8F4FAD822A4B8B2 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				3D9416ED900361823C79386E /* AppError.swift */,
 				867F21DA359BEB77E128CE7B /* AppPreferences.swift */,
 				D17C1653452895D4161EA6C8 /* CalendarEvent.swift */,
 				7E3EFC37B6CE1AF5E895648D /* CalendarInfo.swift */,
@@ -264,6 +267,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F35EE69D65D484C6FAFEFCD2 /* AppDelegate.swift in Sources */,
+				A80AC437FCBD76FFC98C01BA /* AppError.swift in Sources */,
 				656C83497B3994D54E2D7D4C /* AppPreferences.swift in Sources */,
 				CE05C040BC57A2035E4026AD /* AuthManager.swift in Sources */,
 				7D9E1BC0A838DDC61CCFAA6C /* CalendarEvent.swift in Sources */,
