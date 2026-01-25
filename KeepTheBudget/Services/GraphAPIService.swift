@@ -159,6 +159,144 @@ class GraphAPIService {
         }
     }
 
+    // MARK: - Email Messages
+
+    func fetchEmails(from startDate: Date, to endDate: Date) async throws -> [EmailMessage] {
+        print("📧 fetchEmails() called")
+        print("   Start: \(startDate)")
+        print("   End: \(endDate)")
+
+        do {
+            var allMessages: [EmailMessage] = []
+            var nextLink: String? = nil
+            var pageNumber = 1
+
+            // Get user profile for sender filtering
+            print("   👤 Fetching user profile for sender comparison...")
+            let userProfile = try await fetchUserProfile()
+            let userEmail = userProfile.mail
+            print("   ✅ User email: \(userEmail)")
+
+            repeat {
+                let url: URL
+
+                if let nextLink = nextLink, let nextURL = URL(string: nextLink) {
+                    // Use pagination link
+                    url = nextURL
+                    print("   📄 Fetching email page \(pageNumber)...")
+                } else {
+                    // Build initial URL with query parameters
+                    let baseURL = GraphConstants.messagesEndpoint
+                    var components = URLComponents(string: baseURL)!
+
+                    let startISO = startDate.toISO8601String()
+                    let endISO = endDate.toISO8601String()
+
+                    print("   📅 Start ISO: \(startISO)")
+                    print("   📅 End ISO: \(endISO)")
+
+                    components.queryItems = [
+                        URLQueryItem(name: "$filter", value: "receivedDateTime ge \(startISO) and receivedDateTime le \(endISO)"),
+                        URLQueryItem(name: "$select", value: "id,subject,from,toRecipients,receivedDateTime,bodyPreview,conversationId,hasAttachments"),
+                        URLQueryItem(name: "$orderby", value: "receivedDateTime desc"),
+                        URLQueryItem(name: "$top", value: "100") // Request up to 100 messages per page
+                    ]
+
+                    guard let initialURL = components.url else {
+                        print("   ❌ Failed to build URL from components")
+                        throw AppError.networkError("Invalid URL")
+                    }
+                    url = initialURL
+                }
+
+                print("   📡 Request URL: \(url.absoluteString)")
+
+                let data: Data
+                do {
+                    print("   ⏳ Calling makeAuthenticatedRequest...")
+                    data = try await makeAuthenticatedRequest(url: url)
+                    print("   ✅ Got response data: \(data.count) bytes")
+                } catch {
+                    print("   ❌ makeAuthenticatedRequest failed: \(error)")
+                    throw error
+                }
+
+                // Debug: Print and save raw JSON response
+                if let jsonString = String(data: data, encoding: .utf8) {
+                    print("   📋 Raw JSON response (first 500 chars):")
+                    print(String(jsonString.prefix(500)))
+
+                    // Save full response to file for debugging
+                    let debugFile = "/tmp/graph_email_response.json"
+                    try? jsonString.write(toFile: debugFile, atomically: true, encoding: .utf8)
+                    print("   💾 Full response saved to: \(debugFile)")
+                }
+
+                let decoder = JSONDecoder()
+                let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+
+                let response: EmailListResponse
+                do {
+                    response = try decoder.decode(EmailListResponse.self, from: data)
+                    print("   ✅ Successfully decoded \(response.value.count) messages")
+                } catch {
+                    print("   ❌ JSON Decoding failed: \(error)")
+                    if let decodingError = error as? DecodingError {
+                        switch decodingError {
+                        case .keyNotFound(let key, let context):
+                            print("      Missing key: \(key.stringValue)")
+                            print("      Context: \(context.debugDescription)")
+                        case .typeMismatch(let type, let context):
+                            print("      Type mismatch: expected \(type)")
+                            print("      Context: \(context.debugDescription)")
+                        case .valueNotFound(let type, let context):
+                            print("      Value not found: \(type)")
+                            print("      Context: \(context.debugDescription)")
+                        case .dataCorrupted(let context):
+                            print("      Data corrupted: \(context.debugDescription)")
+                        @unknown default:
+                            print("      Unknown decoding error")
+                        }
+                    }
+                    throw error
+                }
+
+                // Mark messages as sent/received based on user email
+                let messagesWithStatus = response.value.map { $0.withSentStatus(userEmail: userEmail) }
+
+                print("   📦 Received \(messagesWithStatus.count) emails on page \(pageNumber)")
+                allMessages.append(contentsOf: messagesWithStatus)
+
+                // Check for next page
+                nextLink = json?["@odata.nextLink"] as? String
+                if nextLink != nil {
+                    print("   ➡️  More emails available, fetching next page...")
+                    pageNumber += 1
+                }
+
+            } while nextLink != nil
+
+            print("   ✅ Total emails fetched: \(allMessages.count)")
+            return allMessages
+        } catch let error as AppError {
+            // Pass through AppError unchanged
+            throw error
+        } catch let error as AuthError {
+            // Convert auth errors to authentication expired
+            throw AppError.authenticationExpired
+        } catch {
+            // Check if this is an auth-related NSError
+            let nsError = error as NSError
+            if nsError.domain == "AuthManager" ||
+               nsError.localizedDescription.lowercased().contains("account") ||
+               nsError.localizedDescription.lowercased().contains("token") {
+                throw AppError.authenticationExpired
+            }
+            // Convert other errors to network error
+            throw AppError.networkError(error.localizedDescription)
+        }
+    }
+
     // MARK: - Delta Query Support
 
     func fetchEventsWithDelta(calendarId: String, deltaLink: String?) async throws -> (events: [CalendarEvent], newDeltaLink: String?) {

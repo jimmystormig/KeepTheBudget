@@ -11,23 +11,25 @@ import AppKit
 struct DailyMeetingReportView: View {
     let defaultStartDate: Date
     let defaultEndDate: Date
-    let onGenerateReport: (Date, Date) async -> TimeReport?
+    let onGenerateReport: (Date, Date) async -> ComprehensiveReport?
     let aiAnalyzer: AIReportAnalyzer
     let storageManager: StorageManager
     let onClose: () -> Void
 
     @State private var startDate: Date
     @State private var endDate: Date
-    @State private var report: TimeReport?
+    @State private var report: ComprehensiveReport?
     @State private var expandedFirstLevel: Set<UUID> = []
+    @State private var expandedEmailThreads: Set<String> = []
     @State private var copiedToClipboard = false
     @State private var isGenerating = false
     @State private var showAISection = false
+    @State private var errorMessage: String?
 
     init(
         defaultStartDate: Date,
         defaultEndDate: Date,
-        onGenerateReport: @escaping (Date, Date) async -> TimeReport?,
+        onGenerateReport: @escaping (Date, Date) async -> ComprehensiveReport?,
         aiAnalyzer: AIReportAnalyzer,
         storageManager: StorageManager,
         onClose: @escaping () -> Void
@@ -54,6 +56,8 @@ struct DailyMeetingReportView: View {
             // Report content or empty state
             if isGenerating {
                 loadingView
+            } else if let errorMessage = errorMessage {
+                errorStateView(errorMessage)
             } else if let report = report {
                 reportContentView(report)
             } else {
@@ -121,29 +125,17 @@ struct DailyMeetingReportView: View {
 
     // MARK: - Report Content
 
-    private func reportContentView(_ report: TimeReport) -> some View {
+    private func reportContentView(_ comprehensiveReport: ComprehensiveReport) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 // Header
-                reportHeaderView(report)
+                reportHeaderView(comprehensiveReport.timeReport)
 
-                // First-level groups
-                if report.firstLevelGroups.isEmpty {
-                    Text("No events found in selected date range")
-                        .foregroundColor(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .padding()
-                } else {
-                    ForEach(report.firstLevelGroups) { firstLevel in
-                        FirstLevelGroupView(
-                            group: firstLevel,
-                            isExpanded: expandedFirstLevel.contains(firstLevel.id),
-                            onToggle: {
-                                toggleExpansion(firstLevel.id)
-                            }
-                        )
-                    }
-                }
+                // Calendar Events Section
+                calendarEventsSection(comprehensiveReport.timeReport)
+
+                // Email Threads Section
+                emailThreadsSection(comprehensiveReport.emailThreads)
             }
             .padding()
             .textSelection(.enabled)
@@ -170,6 +162,88 @@ struct DailyMeetingReportView: View {
         .cornerRadius(8)
     }
 
+    private func calendarEventsSection(_ report: TimeReport) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Section header
+            HStack {
+                Image(systemName: "calendar")
+                    .foregroundColor(.blue)
+                Text("Calendar Events")
+                    .font(.headline)
+                Spacer()
+                if !report.firstLevelGroups.isEmpty {
+                    Text("\(report.firstLevelGroups.count) groups")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            Divider()
+
+            // First-level groups
+            if report.firstLevelGroups.isEmpty {
+                Text("No events found in selected date range")
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding()
+            } else {
+                ForEach(report.firstLevelGroups) { firstLevel in
+                    FirstLevelGroupView(
+                        group: firstLevel,
+                        isExpanded: expandedFirstLevel.contains(firstLevel.id),
+                        onToggle: {
+                            toggleExpansion(firstLevel.id)
+                        }
+                    )
+                }
+            }
+        }
+        .padding()
+        .background(Color(NSColor.windowBackgroundColor))
+        .cornerRadius(8)
+    }
+
+    private func emailThreadsSection(_ threads: [EmailThread]) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Section header
+            HStack {
+                Image(systemName: "envelope.fill")
+                    .foregroundColor(.blue)
+                Text("Email Communications")
+                    .font(.headline)
+                Spacer()
+                if !threads.isEmpty {
+                    Text("\(threads.count) threads")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            Divider()
+
+            // Thread list or empty state
+            if threads.isEmpty {
+                Text("No emails in selected date range")
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding()
+            } else {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(threads) { thread in
+                        EmailThreadView(
+                            thread: thread,
+                            isExpanded: expandedEmailThreads.contains(thread.id),
+                            onToggle: { toggleEmailThread(thread.id) }
+                        )
+                    }
+                }
+            }
+        }
+        .padding()
+        .background(Color(NSColor.windowBackgroundColor))
+        .cornerRadius(8)
+    }
+
     // MARK: - AI Analysis Section
 
     private var aiAnalysisSection: some View {
@@ -178,7 +252,7 @@ struct DailyMeetingReportView: View {
             content: {
                 if let report = report {
                     AIAnalysisView(
-                        reportText: report.toText(),
+                        reportText: report.toText(),  // Uses ComprehensiveReport.toText()
                         analyzer: aiAnalyzer,
                         storageManager: storageManager
                     )
@@ -223,6 +297,21 @@ struct DailyMeetingReportView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
+    private func errorStateView(_ message: String) -> some View {
+        VStack(spacing: 12) {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.system(size: 48))
+                .foregroundColor(.red)
+            Text("Error Generating Report")
+                .font(.headline)
+            Text(message)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
     // MARK: - Footer
 
     private var footerView: some View {
@@ -245,16 +334,34 @@ struct DailyMeetingReportView: View {
     // MARK: - Helper Methods
 
     private func generateReportForCurrentDates() {
+        print("🔄 DailyMeetingReportView: generateReportForCurrentDates() called")
+        print("   Start: \(startDate)")
+        print("   End: \(endDate)")
+
         Task {
             isGenerating = true
-            report = await onGenerateReport(startDate, endDate)
+            errorMessage = nil
+            report = nil
 
-            // Auto-expand all groups when report is generated
-            if let report = report {
-                expandedFirstLevel = Set(report.firstLevelGroups.map { $0.id })
+            print("   ⏳ Calling onGenerateReport callback...")
+
+            let result = await onGenerateReport(startDate, endDate)
+
+            if let result = result {
+                print("   ✅ Report received with \(result.emailThreads.count) email threads")
+                report = result
+                // Auto-expand all groups when report is generated
+                expandedFirstLevel = Set(result.timeReport.firstLevelGroups.map { $0.id })
+                // Auto-expand first 5 email threads
+                expandedEmailThreads = Set(result.emailThreads.prefix(5).map { $0.id })
+            } else {
+                print("   ❌ Report is nil! Check error dialog for details.")
+                // Error dialog will be shown by AppDelegate
+                errorMessage = "Report generation failed. See error dialog for details."
             }
 
             isGenerating = false
+            print("   🏁 Generation complete")
         }
     }
 
@@ -263,6 +370,14 @@ struct DailyMeetingReportView: View {
             expandedFirstLevel.remove(id)
         } else {
             expandedFirstLevel.insert(id)
+        }
+    }
+
+    private func toggleEmailThread(_ id: String) {
+        if expandedEmailThreads.contains(id) {
+            expandedEmailThreads.remove(id)
+        } else {
+            expandedEmailThreads.insert(id)
         }
     }
 

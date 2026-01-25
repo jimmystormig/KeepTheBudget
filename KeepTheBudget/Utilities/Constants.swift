@@ -13,6 +13,7 @@ enum GraphConstants {
     // Endpoints
     static let meEndpoint = "\(baseURL)/me"
     static let calendarsEndpoint = "\(baseURL)/me/calendars"
+    static let messagesEndpoint = "\(baseURL)/me/messages"
 
     static func eventsEndpoint(calendarId: String) -> String {
         // URL encode the calendar ID as it may contain special characters
@@ -24,7 +25,8 @@ enum GraphConstants {
     // Note: Don't include offline_access - it's a reserved scope that MSAL adds automatically
     static let scopes = [
         "Calendars.Read",
-        "User.Read"
+        "User.Read",
+        "Mail.Read"  // Phase 1: Email integration
     ]
 }
 

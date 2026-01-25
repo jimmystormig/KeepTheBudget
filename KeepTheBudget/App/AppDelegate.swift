@@ -25,16 +25,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     private var timeCalculator: TimeCalculator!
     private var updateScheduler: UpdateScheduler!
     private var storageManager: StorageManager!
+    private var calendarDataSource: CalendarDataSource!
+    private var emailDataSource: EmailDataSource!
     private lazy var aiAnalyzer = AIReportAnalyzer(storageManager: storageManager)
-    private lazy var calendarDataSource: CalendarDataSource = {
-        CalendarDataSource(graphAPIService: graphAPIService, storageManager: storageManager)
-    }()
 
     // State
     @Published private var timeSummary: TimeSummary?
     @Published private var isLoading = false
     @Published private var lastUpdateTime: Date?
     @Published private var errorMessage: String?
+    private var servicesInitialized = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Initialize basic services
@@ -108,6 +108,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             // Initialize GraphAPIService
             print("   → Creating GraphAPIService")
             graphAPIService = GraphAPIService(authManager: authManager)
+
+            // Initialize data sources that depend on GraphAPIService
+            print("   → Creating CalendarDataSource")
+            calendarDataSource = CalendarDataSource(graphAPIService: graphAPIService, storageManager: storageManager)
+            print("   → Creating EmailDataSource")
+            emailDataSource = EmailDataSource(graphAPIService: graphAPIService, storageManager: storageManager)
+
+            print("   ✅ Services created (but not fully initialized until auth + calendar selection)")
 
             // Continue with existing flow
             print("   → Proceeding to authentication check")
@@ -318,6 +326,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             return
         }
 
+        // Mark services as fully initialized (auth + calendar selection complete)
+        servicesInitialized = true
+        print("   ✅ All services FULLY initialized (auth + calendar complete)")
+
         // Initialize update scheduler
         print("   → Setting up update scheduler")
         setupUpdateScheduler()
@@ -400,6 +412,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
 
                         Task {
                             print("🔄 Setting up scheduler and refreshing data...")
+                            // Mark services as fully initialized
+                            self?.servicesInitialized = true
+                            print("   ✅ Services FULLY initialized (after calendar selection)")
                             self?.setupUpdateScheduler()
                             await self?.refreshData()
                         }
@@ -674,7 +689,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
                     defaultStartDate: weekStart,
                     defaultEndDate: weekEnd,
                     onGenerateReport: { [weak self] startDate, endDate in
-                        await self?.generateReport(from: startDate, to: endDate)
+                        await self?.generateTimeReport(from: startDate, to: endDate)
                     },
                     onClose: { [weak self] in
                         self?.reportWindow?.close()
@@ -758,9 +773,19 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         return validEvents
     }
 
-    private func generateReport(from startDate: Date, to endDate: Date) async -> TimeReport? {
+    // Generate TimeReport only (for WeeklyReportView)
+    private func generateTimeReport(from startDate: Date, to endDate: Date) async -> TimeReport? {
+        print("📊 AppDelegate.generateTimeReport() called")
+        print("   servicesInitialized: \(servicesInitialized)")
+
+        // Ensure services are initialized
+        guard servicesInitialized, graphAPIService != nil else {
+            print("❌ Services not initialized yet")
+            return nil
+        }
+
         do {
-            print("📊 Generating report from \(startDate) to \(endDate)")
+            print("   Generating time report from \(startDate) to \(endDate)")
             let events = try await fetchEventsForReport(from: startDate, to: endDate)
             print("   Found \(events.count) valid events")
 
@@ -771,6 +796,113 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             return report
         } catch {
             print("❌ Failed to generate report: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
+    // Generate comprehensive report with emails (for DailyMeetingReportView)
+    private func generateReport(from startDate: Date, to endDate: Date) async -> ComprehensiveReport? {
+        print("📊 AppDelegate.generateReport() called")
+        print("   servicesInitialized: \(servicesInitialized)")
+
+        // Ensure services are initialized
+        guard servicesInitialized, graphAPIService != nil, emailDataSource != nil else {
+            print("❌ Services not ready")
+            return nil
+        }
+
+        print("   ✅ All services confirmed initialized")
+
+        do {
+            print("   📡 Fetching calendar events and emails in parallel...")
+
+            // Fetch calendar events and email threads in parallel
+            async let eventsTask = fetchEventsForReport(from: startDate, to: endDate)
+            async let emailThreadsTask = emailDataSource.fetchEmailThreads(from: startDate, to: endDate)
+
+            let (events, emailThreads) = try await (eventsTask, emailThreadsTask)
+
+            print("   ✅ Found \(events.count) valid events")
+            print("   ✅ Found \(emailThreads.count) email threads")
+
+            // Generate time report from calendar events
+            let reportGenerator = TimeReportGenerator(timeCalculator: timeCalculator)
+            let timeReport = reportGenerator.generateReport(from: events, startDate: startDate, endDate: endDate)
+            print("   ✅ Generated report with \(timeReport.firstLevelGroups.count) top-level groups")
+
+            // Create comprehensive report
+            let comprehensiveReport = ComprehensiveReport(
+                timeReport: timeReport,
+                emailThreads: emailThreads,
+                chatConversations: nil,  // Phase 2
+                startDate: startDate,
+                endDate: endDate
+            )
+
+            print("   🎉 Comprehensive report created successfully")
+            return comprehensiveReport
+        } catch {
+            print("❌ Failed to generate report: \(error)")
+            print("   Error type: \(type(of: error))")
+            print("   Localized: \(error.localizedDescription)")
+
+            // Extract more details from AppError or DecodingError
+            var detailedMessage = error.localizedDescription
+
+            if let decodingError = error as? DecodingError {
+                detailedMessage = "JSON Decoding Error:\n"
+                switch decodingError {
+                case .keyNotFound(let key, let context):
+                    detailedMessage += "Missing key: '\(key.stringValue)'\nPath: \(context.codingPath.map { $0.stringValue }.joined(separator: " → "))"
+                case .typeMismatch(let type, let context):
+                    detailedMessage += "Type mismatch: expected \(type)\nPath: \(context.codingPath.map { $0.stringValue }.joined(separator: " → "))"
+                case .valueNotFound(let type, let context):
+                    detailedMessage += "Value not found: \(type)\nPath: \(context.codingPath.map { $0.stringValue }.joined(separator: " → "))"
+                case .dataCorrupted(let context):
+                    detailedMessage += "Data corrupted\n\(context.debugDescription)"
+                @unknown default:
+                    detailedMessage += "Unknown decoding error"
+                }
+            } else if let appError = error as? AppError {
+                switch appError {
+                case .graphAPIError(let statusCode, let message):
+                    detailedMessage = """
+                    HTTP Status: \(statusCode)
+                    Response: \(message)
+
+                    Status 403 = Missing Mail.Read permission
+                    Status 401 = Authentication expired
+                    """
+                case .authenticationExpired:
+                    detailedMessage = "Authentication token expired or invalid"
+                case .networkError(let message):
+                    detailedMessage = "Network error: \(message)"
+                default:
+                    break
+                }
+            }
+
+            // Show error to user
+            await MainActor.run {
+                let alert = NSAlert()
+                alert.messageText = "Report Generation Failed"
+                alert.informativeText = """
+                \(detailedMessage)
+
+                Type: \(type(of: error))
+
+                Solution:
+                1. Go to Settings → Account
+                2. Click "Sign Out"
+                3. Quit the app completely (⌘Q)
+                4. Restart the app
+                5. Sign in again (you SHOULD see a consent prompt for Mail.Read)
+                """
+                alert.alertStyle = .critical
+                alert.addButton(withTitle: "OK")
+                alert.runModal()
+            }
+
             return nil
         }
     }
