@@ -14,6 +14,7 @@ enum GraphConstants {
     static let meEndpoint = "\(baseURL)/me"
     static let calendarsEndpoint = "\(baseURL)/me/calendars"
     static let messagesEndpoint = "\(baseURL)/me/messages"
+    static let chatsEndpoint = "\(baseURL)/me/chats"
 
     static func eventsEndpoint(calendarId: String) -> String {
         // URL encode the calendar ID as it may contain special characters
@@ -21,12 +22,18 @@ enum GraphConstants {
         return "\(baseURL)/me/calendars/\(encodedCalendarId)/events"
     }
 
+    static func chatMessagesEndpoint(chatId: String) -> String {
+        let encodedChatId = chatId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? chatId
+        return "\(baseURL)/me/chats/\(encodedChatId)/messages"
+    }
+
     // Scopes
     // Note: Don't include offline_access - it's a reserved scope that MSAL adds automatically
     static let scopes = [
         "Calendars.Read",
         "User.Read",
-        "Mail.Read"  // Phase 1: Email integration
+        "Mail.Read",  // Phase 1: Email integration
+        "Chat.Read"   // Phase 2: Teams chat integration
     ]
 }
 

@@ -106,38 +106,3 @@ struct ComprehensiveReport {
         return formatter.string(from: date)
     }
 }
-
-// MARK: - Placeholder for Phase 2
-
-/// Teams chat conversation model (Phase 2 implementation)
-struct ChatConversation: Identifiable {
-    let id: String
-    let topic: String?
-    let chatType: String
-    let messages: [ChatMessage]
-    let participants: [ChatParticipant]
-    let lastMessageDate: Date
-
-    var displayName: String {
-        topic ?? participants.map(\.displayName).joined(separator: ", ")
-    }
-
-    func toText() -> String {
-        var text = "\(displayName) (\(messages.count) messages)"
-        // Detailed formatting will be implemented in Phase 2
-        return text
-    }
-}
-
-struct ChatMessage: Identifiable {
-    let id: String
-    let from: ChatParticipant
-    let body: String
-    let createdDateTime: Date
-}
-
-struct ChatParticipant: Identifiable {
-    let id: String
-    let displayName: String
-    let email: String?
-}

@@ -27,6 +27,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     private var storageManager: StorageManager!
     private var calendarDataSource: CalendarDataSource!
     private var emailDataSource: EmailDataSource!
+    private var chatDataSource: ChatDataSource!
     private lazy var aiAnalyzer = AIReportAnalyzer(storageManager: storageManager)
 
     // State
@@ -114,6 +115,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             calendarDataSource = CalendarDataSource(graphAPIService: graphAPIService, storageManager: storageManager)
             print("   → Creating EmailDataSource")
             emailDataSource = EmailDataSource(graphAPIService: graphAPIService, storageManager: storageManager)
+            print("   → Creating ChatDataSource")
+            chatDataSource = ChatDataSource(graphAPIService: graphAPIService, storageManager: storageManager)
 
             print("   ✅ Services created (but not fully initialized until auth + calendar selection)")
 
@@ -806,7 +809,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         print("   servicesInitialized: \(servicesInitialized)")
 
         // Ensure services are initialized
-        guard servicesInitialized, graphAPIService != nil, emailDataSource != nil else {
+        guard servicesInitialized, graphAPIService != nil, emailDataSource != nil, chatDataSource != nil else {
             print("❌ Services not ready")
             return nil
         }
@@ -814,16 +817,18 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         print("   ✅ All services confirmed initialized")
 
         do {
-            print("   📡 Fetching calendar events and emails in parallel...")
+            print("   📡 Fetching calendar events, emails, and chats in parallel...")
 
-            // Fetch calendar events and email threads in parallel
+            // Fetch calendar events, email threads, and chat conversations in parallel
             async let eventsTask = fetchEventsForReport(from: startDate, to: endDate)
             async let emailThreadsTask = emailDataSource.fetchEmailThreads(from: startDate, to: endDate)
+            async let chatConversationsTask = chatDataSource.fetchChatConversations(from: startDate, to: endDate)
 
-            let (events, emailThreads) = try await (eventsTask, emailThreadsTask)
+            let (events, emailThreads, chatConversations) = try await (eventsTask, emailThreadsTask, chatConversationsTask)
 
             print("   ✅ Found \(events.count) valid events")
             print("   ✅ Found \(emailThreads.count) email threads")
+            print("   ✅ Found \(chatConversations.count) chat conversations")
 
             // Generate time report from calendar events
             let reportGenerator = TimeReportGenerator(timeCalculator: timeCalculator)
@@ -834,7 +839,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             let comprehensiveReport = ComprehensiveReport(
                 timeReport: timeReport,
                 emailThreads: emailThreads,
-                chatConversations: nil,  // Phase 2
+                chatConversations: chatConversations,
                 startDate: startDate,
                 endDate: endDate
             )

@@ -21,6 +21,10 @@ struct DailyMeetingReportView: View {
     @State private var report: ComprehensiveReport?
     @State private var expandedFirstLevel: Set<UUID> = []
     @State private var expandedEmailThreads: Set<String> = []
+    @State private var expandedChats: Set<String> = []
+    @State private var showCalendarSection = true
+    @State private var showEmailSection = true
+    @State private var showChatSection = true
     @State private var copiedToClipboard = false
     @State private var isGenerating = false
     @State private var showAISection = false
@@ -136,6 +140,11 @@ struct DailyMeetingReportView: View {
 
                 // Email Threads Section
                 emailThreadsSection(comprehensiveReport.emailThreads)
+
+                // Teams Chats Section
+                if let chats = comprehensiveReport.chatConversations {
+                    chatConversationsSection(chats)
+                }
             }
             .padding()
             .textSelection(.enabled)
@@ -164,37 +173,48 @@ struct DailyMeetingReportView: View {
 
     private func calendarEventsSection(_ report: TimeReport) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Section header
-            HStack {
-                Image(systemName: "calendar")
-                    .foregroundColor(.blue)
-                Text("Calendar Events")
-                    .font(.headline)
-                Spacer()
-                if !report.firstLevelGroups.isEmpty {
-                    Text("\(report.firstLevelGroups.count) groups")
+            // Section header (collapsible)
+            Button(action: { showCalendarSection.toggle() }) {
+                HStack {
+                    Image(systemName: showCalendarSection ? "chevron.down" : "chevron.right")
                         .font(.caption)
                         .foregroundColor(.secondary)
+                        .frame(width: 12)
+
+                    Image(systemName: "calendar")
+                        .foregroundColor(.blue)
+                    Text("Calendar Events")
+                        .font(.headline)
+                    Spacer()
+                    if !report.firstLevelGroups.isEmpty {
+                        Text("\(report.firstLevelGroups.count) groups")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                 }
+                .contentShape(Rectangle())
             }
+            .buttonStyle(PlainButtonStyle())
 
-            Divider()
+            if showCalendarSection {
+                Divider()
 
-            // First-level groups
-            if report.firstLevelGroups.isEmpty {
-                Text("No events found in selected date range")
-                    .foregroundColor(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding()
-            } else {
-                ForEach(report.firstLevelGroups) { firstLevel in
-                    FirstLevelGroupView(
-                        group: firstLevel,
-                        isExpanded: expandedFirstLevel.contains(firstLevel.id),
-                        onToggle: {
-                            toggleExpansion(firstLevel.id)
-                        }
-                    )
+                // First-level groups
+                if report.firstLevelGroups.isEmpty {
+                    Text("No events found in selected date range")
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding()
+                } else {
+                    ForEach(report.firstLevelGroups) { firstLevel in
+                        FirstLevelGroupView(
+                            group: firstLevel,
+                            isExpanded: expandedFirstLevel.contains(firstLevel.id),
+                            onToggle: {
+                                toggleExpansion(firstLevel.id)
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -205,36 +225,99 @@ struct DailyMeetingReportView: View {
 
     private func emailThreadsSection(_ threads: [EmailThread]) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Section header
-            HStack {
-                Image(systemName: "envelope.fill")
-                    .foregroundColor(.blue)
-                Text("Email Communications")
-                    .font(.headline)
-                Spacer()
-                if !threads.isEmpty {
-                    Text("\(threads.count) threads")
+            // Section header (collapsible)
+            Button(action: { showEmailSection.toggle() }) {
+                HStack {
+                    Image(systemName: showEmailSection ? "chevron.down" : "chevron.right")
                         .font(.caption)
                         .foregroundColor(.secondary)
+                        .frame(width: 12)
+
+                    Image(systemName: "envelope.fill")
+                        .foregroundColor(.blue)
+                    Text("Email Communications")
+                        .font(.headline)
+                    Spacer()
+                    if !threads.isEmpty {
+                        Text("\(threads.count) threads")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(PlainButtonStyle())
+
+            if showEmailSection {
+                Divider()
+
+                // Thread list or empty state
+                if threads.isEmpty {
+                    Text("No emails in selected date range")
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding()
+                } else {
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(threads) { thread in
+                            EmailThreadView(
+                                thread: thread,
+                                isExpanded: expandedEmailThreads.contains(thread.id),
+                                onToggle: { toggleEmailThread(thread.id) }
+                            )
+                        }
+                    }
                 }
             }
+        }
+        .padding()
+        .background(Color(NSColor.windowBackgroundColor))
+        .cornerRadius(8)
+    }
 
-            Divider()
+    private func chatConversationsSection(_ conversations: [ChatConversation]) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Section header (collapsible)
+            Button(action: { showChatSection.toggle() }) {
+                HStack {
+                    Image(systemName: showChatSection ? "chevron.down" : "chevron.right")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .frame(width: 12)
 
-            // Thread list or empty state
-            if threads.isEmpty {
-                Text("No emails in selected date range")
-                    .foregroundColor(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding()
-            } else {
-                VStack(alignment: .leading, spacing: 8) {
-                    ForEach(threads) { thread in
-                        EmailThreadView(
-                            thread: thread,
-                            isExpanded: expandedEmailThreads.contains(thread.id),
-                            onToggle: { toggleEmailThread(thread.id) }
-                        )
+                    Image(systemName: "message.fill")
+                        .foregroundColor(.purple)
+                    Text("Teams Chats")
+                        .font(.headline)
+                    Spacer()
+                    if !conversations.isEmpty {
+                        Text("\(conversations.count) conversations")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(PlainButtonStyle())
+
+            if showChatSection {
+                Divider()
+
+                // Conversation list or empty state
+                if conversations.isEmpty {
+                    Text("No Teams chats in selected date range")
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding()
+                } else {
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(conversations) { conversation in
+                            ChatConversationView(
+                                conversation: conversation,
+                                isExpanded: expandedChats.contains(conversation.id),
+                                onToggle: { toggleChat(conversation.id) }
+                            )
+                        }
                     }
                 }
             }
@@ -354,6 +437,10 @@ struct DailyMeetingReportView: View {
                 expandedFirstLevel = Set(result.timeReport.firstLevelGroups.map { $0.id })
                 // Auto-expand first 5 email threads
                 expandedEmailThreads = Set(result.emailThreads.prefix(5).map { $0.id })
+                // Auto-expand first 5 chat conversations
+                if let chats = result.chatConversations {
+                    expandedChats = Set(chats.prefix(5).map { $0.id })
+                }
             } else {
                 print("   ❌ Report is nil! Check error dialog for details.")
                 // Error dialog will be shown by AppDelegate
@@ -378,6 +465,14 @@ struct DailyMeetingReportView: View {
             expandedEmailThreads.remove(id)
         } else {
             expandedEmailThreads.insert(id)
+        }
+    }
+
+    private func toggleChat(_ id: String) {
+        if expandedChats.contains(id) {
+            expandedChats.remove(id)
+        } else {
+            expandedChats.insert(id)
         }
     }
 
