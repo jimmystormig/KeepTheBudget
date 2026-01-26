@@ -42,22 +42,44 @@ class AIReportAnalyzer {
         request.httpMethod = "POST"
         request.setValue(config.apiKey, forHTTPHeaderField: "api-key")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 30
+        request.timeoutInterval = 120  // Longer timeout for reasoning models (gpt-5.2 needs time to reason)
 
-        // 4. Build prompt
-        let systemPrompt = "You are a helpful assistant that analyzes time tracking reports. Provide concise, actionable insights."
+        // 4. Sanitize report content to avoid content filter issues
+        let sanitizedText = sanitizeReportContent(text)
+        print("📝 Report sanitized: \(text.count) → \(sanitizedText.count) characters")
+
+        // 5. Build prompt
+        let systemPrompt = "You are a helpful assistant that analyzes comprehensive work reports including calendar events, emails, and Teams chats. Identify correlations, priorities, and actionable insights."
         let userPrompt = """
-        Analyze this time report and provide:
-        1. A brief summary (1-2 sentences)
+        Analyze this comprehensive work report and provide:
+        1. A brief summary (1-2 sentences) of the overall activity
         2. 3-5 key highlights or insights
+        3. Correlations: Identify connections between calendar events, emails, and chats (e.g., meetings followed by email discussions, chat conversations about scheduled events)
+        4. Priorities: Identify high-priority items requiring attention based on urgency, importance, or follow-up needs
 
         Report:
-        \(text)
+        \(sanitizedText)
 
         Respond in JSON format:
         {
             "summary": "...",
-            "highlights": ["...", "...", "..."]
+            "highlights": ["...", "...", "..."],
+            "correlations": [
+                {
+                    "type": "eventToEmail | eventToChat | emailToChat | multiChannel",
+                    "title": "Brief title",
+                    "description": "What's connected and why it matters",
+                    "items": ["Reference to specific event/email/chat"]
+                }
+            ],
+            "priorities": [
+                {
+                    "level": "high | medium | low",
+                    "title": "What needs attention",
+                    "reason": "Why it's a priority",
+                    "relatedItems": ["References to related events/emails/chats"]
+                }
+            ]
         }
         """
 
@@ -66,19 +88,19 @@ class AIReportAnalyzer {
                 ["role": "system", "content": systemPrompt],
                 ["role": "user", "content": userPrompt]
             ],
-            "max_completion_tokens": 500,
+            "max_completion_tokens": 2000,  // Higher limit for reasoning models (gpt-5.2 uses reasoning tokens)
             "temperature": 0.3
         ]
 
         request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
 
-        // 5. Make request
+        // 6. Make request
         print("🤖 Sending request to Azure OpenAI...")
         print("   URL: \(url.absoluteString)")
         print("   Deployment: \(config.deploymentName)")
         let (data, response) = try await URLSession.shared.data(for: request)
 
-        // 6. Check HTTP status
+        // 7. Check HTTP status
         guard let httpResponse = response as? HTTPURLResponse else {
             throw AIAnalysisError.networkError
         }
@@ -91,37 +113,172 @@ class AIReportAnalyzer {
             throw AIAnalysisError.apiError(statusCode: httpResponse.statusCode)
         }
 
-        // 7. Parse response
-        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let choices = json["choices"] as? [[String: Any]],
-              let firstChoice = choices.first,
-              let message = firstChoice["message"] as? [String: Any],
-              let content = message["content"] as? String else {
+        // 8. Parse response
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            print("❌ Failed to parse response as JSON")
+            if let rawResponse = String(data: data, encoding: .utf8) {
+                print("   Raw response: \(rawResponse)")
+            }
+            throw AIAnalysisError.invalidResponse
+        }
+
+        print("📦 Full JSON response: \(json)")
+
+        guard let choices = json["choices"] as? [[String: Any]],
+              let firstChoice = choices.first else {
+            print("❌ No choices in response")
+            throw AIAnalysisError.invalidResponse
+        }
+
+        print("📦 First choice: \(firstChoice)")
+
+        guard let message = firstChoice["message"] as? [String: Any] else {
+            print("❌ No message in choice")
+            throw AIAnalysisError.invalidResponse
+        }
+
+        print("📦 Message: \(message)")
+
+        guard let content = message["content"] as? String else {
+            print("❌ No content in message (may be filtered)")
+            // Check if there's a content filter result
+            if let finishReason = firstChoice["finish_reason"] as? String {
+                print("   Finish reason: \(finishReason)")
+            }
+            if let contentFilterResults = firstChoice["content_filter_results"] as? [String: Any] {
+                print("   Content filter results: \(contentFilterResults)")
+            }
             throw AIAnalysisError.invalidResponse
         }
 
         print("✅ Received AI response")
+        print("   Full content: \(content)")
 
-        // 8. Parse JSON from content
-        guard let contentData = content.data(using: .utf8),
-              let contentJson = try? JSONSerialization.jsonObject(with: contentData) as? [String: Any],
-              let summary = contentJson["summary"] as? String,
-              let highlights = contentJson["highlights"] as? [String] else {
+        // 9. Parse JSON from content (handle markdown-wrapped JSON)
+        var jsonContent = content
+
+        // Remove markdown code block if present (```json ... ``` or ``` ... ```)
+        if jsonContent.contains("```") {
+            // Extract content between ```json and ``` or between ``` and ```
+            let pattern = "```(?:json)?\\s*([\\s\\S]*?)```"
+            if let regex = try? NSRegularExpression(pattern: pattern, options: []),
+               let match = regex.firstMatch(in: jsonContent, options: [], range: NSRange(jsonContent.startIndex..., in: jsonContent)),
+               let range = Range(match.range(at: 1), in: jsonContent) {
+                jsonContent = String(jsonContent[range])
+                print("   📋 Extracted JSON from markdown code block")
+            }
+        }
+
+        jsonContent = jsonContent.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard let contentData = jsonContent.data(using: .utf8),
+              let contentJson = try? JSONSerialization.jsonObject(with: contentData) as? [String: Any] else {
             // Fallback: treat entire content as summary if JSON parsing fails
+            print("⚠️  Failed to parse JSON, using content as summary")
+            print("   Attempted to parse: \(String(jsonContent.prefix(200)))...")
             return AIReportAnalysis(
                 summary: content,
                 highlights: [],
+                correlations: [],
+                priorities: [],
                 generatedAt: Date(),
                 error: nil
             )
         }
 
+        // Extract summary and highlights (required)
+        let summary = contentJson["summary"] as? String ?? content
+        let highlights = contentJson["highlights"] as? [String] ?? []
+
+        print("✅ Parsed summary and \(highlights.count) highlights")
+
+        // Parse correlations (Phase 3 - optional)
+        var correlations: [Correlation] = []
+        if let correlationsJson = contentJson["correlations"] as? [[String: Any]] {
+            for corrJson in correlationsJson {
+                guard let typeStr = corrJson["type"] as? String,
+                      let title = corrJson["title"] as? String,
+                      let description = corrJson["description"] as? String,
+                      let items = corrJson["items"] as? [String] else {
+                    continue
+                }
+                // Map type string to enum
+                let type: CorrelationType
+                switch typeStr.lowercased() {
+                case "eventtoemail": type = .eventToEmail
+                case "eventtochat": type = .eventToChat
+                case "emailtochat": type = .emailToChat
+                case "multichannel": type = .multiChannel
+                default: type = .multiChannel  // Default fallback
+                }
+                correlations.append(Correlation(type: type, title: title, description: description, items: items))
+            }
+            print("✅ Parsed \(correlations.count) correlations")
+        } else {
+            print("ℹ️  No correlations in AI response")
+        }
+
+        // Parse priorities (Phase 3 - optional)
+        var priorities: [Priority] = []
+        if let prioritiesJson = contentJson["priorities"] as? [[String: Any]] {
+            for prioJson in prioritiesJson {
+                guard let levelStr = prioJson["level"] as? String,
+                      let title = prioJson["title"] as? String,
+                      let reason = prioJson["reason"] as? String,
+                      let relatedItems = prioJson["relatedItems"] as? [String] else {
+                    continue
+                }
+                // Map level string to enum
+                let level: PriorityLevel
+                switch levelStr.lowercased() {
+                case "high": level = .high
+                case "medium": level = .medium
+                case "low": level = .low
+                default: level = .medium  // Default fallback
+                }
+                priorities.append(Priority(level: level, title: title, reason: reason, relatedItems: relatedItems))
+            }
+            print("✅ Parsed \(priorities.count) priorities")
+        } else {
+            print("ℹ️  No priorities in AI response")
+        }
+
         return AIReportAnalysis(
             summary: summary,
             highlights: highlights,
+            correlations: correlations,
+            priorities: priorities,
             generatedAt: Date(),
             error: nil
         )
+    }
+
+    /// Sanitize report content to avoid Azure OpenAI content filter issues
+    /// - Parameter text: Raw report text
+    /// - Returns: Sanitized and truncated text safe for AI analysis
+    private func sanitizeReportContent(_ text: String) -> String {
+        var sanitized = text
+
+        // 1. Truncate to reasonable length (5000 chars) to reduce content filter exposure
+        let maxLength = 5000
+        if sanitized.count > maxLength {
+            // Try to find a natural break point (newline) near the limit
+            let truncateAt = sanitized.index(sanitized.startIndex, offsetBy: maxLength)
+            if let lastNewline = sanitized[..<truncateAt].lastIndex(of: "\n") {
+                sanitized = String(sanitized[..<lastNewline])
+            } else {
+                sanitized = String(sanitized.prefix(maxLength))
+            }
+            sanitized += "\n\n[Report truncated for analysis]"
+        }
+
+        // 2. Remove potentially problematic patterns (very conservative)
+        // Note: We want to keep most business content intact, only remove obvious issues
+
+        // 3. Normalize excessive whitespace
+        sanitized = sanitized.replacingOccurrences(of: "\n\n\n+", with: "\n\n", options: .regularExpression)
+
+        return sanitized
     }
 }
 

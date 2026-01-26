@@ -12,9 +12,9 @@ struct AIAnalysisView: View {
     let analyzer: AIReportAnalyzer
     let storageManager: StorageManager
 
-    @State private var analysis: AIReportAnalysis?
-    @State private var isAnalyzing = false
-    @State private var errorMessage: String?
+    @Binding var analysis: AIReportAnalysis?
+    @Binding var isAnalyzing: Bool
+    @Binding var errorMessage: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -105,8 +105,8 @@ struct AIAnalysisView: View {
     }
 
     private func successView(_ analysis: AIReportAnalysis) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // Header
+        VStack(alignment: .leading, spacing: 0) {
+            // Header (fixed at top, not scrollable)
             HStack {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundColor(.green)
@@ -124,47 +124,88 @@ struct AIAnalysisView: View {
                 }
                 .buttonStyle(.borderless)
             }
+            .padding(.bottom, 8)
 
             Divider()
 
-            // Summary
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Summary")
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.secondary)
+            // Scrollable content
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    // Summary
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Summary")
+                            .font(.headline)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.secondary)
 
-                Text(analysis.summary)
-                    .font(.body)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+                        Text(analysis.summary)
+                            .font(.body)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
 
-            // Highlights
-            if !analysis.highlights.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Key Highlights")
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.secondary)
+                    // Highlights
+                    if !analysis.highlights.isEmpty {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Key Highlights")
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.secondary)
 
-                    VStack(alignment: .leading, spacing: 6) {
-                        ForEach(Array(analysis.highlights.enumerated()), id: \.offset) { index, highlight in
-                            HStack(alignment: .top, spacing: 8) {
-                                Text("•")
-                                    .foregroundColor(.blue)
-                                Text(highlight)
-                                    .font(.body)
-                                    .fixedSize(horizontal: false, vertical: true)
+                            VStack(alignment: .leading, spacing: 8) {
+                                ForEach(Array(analysis.highlights.enumerated()), id: \.offset) { index, highlight in
+                                    HStack(alignment: .top, spacing: 8) {
+                                        Text("•")
+                                            .font(.body)
+                                            .foregroundColor(.blue)
+                                        Text(highlight)
+                                            .font(.body)
+                                            .fixedSize(horizontal: false, vertical: true)
+                                    }
+                                }
                             }
                         }
                     }
-                }
-            }
 
-            // Timestamp
-            Text("Generated \(formatTimestamp(analysis.generatedAt))")
-                .font(.caption2)
-                .foregroundColor(.secondary)
+                    // Correlations (Phase 3)
+                    if !analysis.correlations.isEmpty {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Correlations")
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.secondary)
+
+                            VStack(alignment: .leading, spacing: 8) {
+                                ForEach(analysis.correlations) { correlation in
+                                    CorrelationRowView(correlation: correlation)
+                                }
+                            }
+                        }
+                    }
+
+                    // Priorities (Phase 3)
+                    if !analysis.priorities.isEmpty {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Priorities")
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.secondary)
+
+                            VStack(alignment: .leading, spacing: 8) {
+                                ForEach(analysis.priorities) { priority in
+                                    PriorityRowView(priority: priority)
+                                }
+                            }
+                        }
+                    }
+
+                    // Timestamp
+                    Text("Generated at \(formatTimestamp(analysis.generatedAt))")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .padding(.top, 8)
+            }
+            .frame(maxHeight: 400)  // Limit height to ensure it's scrollable
         }
     }
 
@@ -225,8 +266,127 @@ struct AIAnalysisView: View {
     // MARK: - Helpers
 
     private func formatTimestamp(_ date: Date) -> String {
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .full
-        return formatter.localizedString(for: date, relativeTo: Date())
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d, yyyy 'at' HH:mm:ss"
+        return formatter.string(from: date)
+    }
+}
+
+// MARK: - Correlation Row View
+
+struct CorrelationRowView: View {
+    let correlation: Correlation
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // Header with type badge
+            HStack(spacing: 8) {
+                Image(systemName: correlation.type.icon)
+                    .font(.body)
+                    .foregroundColor(.purple)
+
+                Text(correlation.type.rawValue)
+                    .font(.subheadline)
+                    .foregroundColor(.purple)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Color.purple.opacity(0.1))
+                    .cornerRadius(4)
+
+                Text(correlation.title)
+                    .font(.body)
+                    .fontWeight(.medium)
+            }
+
+            // Description
+            Text(correlation.description)
+                .font(.body)
+                .foregroundColor(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            // Related items
+            if !correlation.items.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(correlation.items, id: \.self) { item in
+                        HStack(spacing: 6) {
+                            Image(systemName: "arrow.turn.down.right")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Text(item)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+                .padding(.leading, 8)
+            }
+        }
+        .padding(12)
+        .background(Color.purple.opacity(0.05))
+        .cornerRadius(6)
+    }
+}
+
+// MARK: - Priority Row View
+
+struct PriorityRowView: View {
+    let priority: Priority
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // Header with priority level badge
+            HStack(spacing: 8) {
+                Image(systemName: priority.level.icon)
+                    .font(.body)
+                    .foregroundColor(colorForLevel(priority.level))
+
+                Text(priority.level.rawValue)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(colorForLevel(priority.level))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(colorForLevel(priority.level).opacity(0.15))
+                    .cornerRadius(4)
+
+                Text(priority.title)
+                    .font(.body)
+                    .fontWeight(.medium)
+            }
+
+            // Reason
+            Text(priority.reason)
+                .font(.body)
+                .foregroundColor(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            // Related items
+            if !priority.relatedItems.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(priority.relatedItems, id: \.self) { item in
+                        HStack(spacing: 6) {
+                            Image(systemName: "link")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Text(item)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+                .padding(.leading, 8)
+            }
+        }
+        .padding(12)
+        .background(colorForLevel(priority.level).opacity(0.05))
+        .cornerRadius(6)
+    }
+
+    private func colorForLevel(_ level: PriorityLevel) -> Color {
+        switch level {
+        case .high: return .red
+        case .medium: return .orange
+        case .low: return .yellow
+        }
     }
 }

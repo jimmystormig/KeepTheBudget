@@ -30,6 +30,11 @@ struct DailyMeetingReportView: View {
     @State private var showAISection = false
     @State private var errorMessage: String?
 
+    // AI Analysis state (lifted up to persist across collapse/expand)
+    @State private var aiAnalysis: AIReportAnalysis?
+    @State private var isAnalyzingAI = false
+    @State private var aiErrorMessage: String?
+
     init(
         defaultStartDate: Date,
         defaultEndDate: Date,
@@ -335,9 +340,12 @@ struct DailyMeetingReportView: View {
             content: {
                 if let report = report {
                     AIAnalysisView(
-                        reportText: report.toText(),  // Uses ComprehensiveReport.toText()
+                        reportText: report.toText(),
                         analyzer: aiAnalyzer,
-                        storageManager: storageManager
+                        storageManager: storageManager,
+                        analysis: $aiAnalysis,
+                        isAnalyzing: $isAnalyzingAI,
+                        errorMessage: $aiErrorMessage
                     )
                     .padding(.top, 8)
                 }
@@ -425,6 +433,11 @@ struct DailyMeetingReportView: View {
             isGenerating = true
             errorMessage = nil
             report = nil
+
+            // Clear previous AI analysis when generating new report
+            aiAnalysis = nil
+            isAnalyzingAI = false
+            aiErrorMessage = nil
 
             print("   ⏳ Calling onGenerateReport callback...")
 
