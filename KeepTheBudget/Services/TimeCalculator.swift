@@ -68,4 +68,31 @@ class TimeCalculator {
 
         return categoryMinutes
     }
+
+    /// Calculates total minutes for goal-eligible events only
+    /// Filters events based on category preferences
+    func calculateGoalEligibleMinutes(events: [CalendarEvent], preferences: AppPreferences) -> Int {
+        // If filtering is disabled, all events count
+        guard preferences.categoryFilteringEnabled else {
+            return calculateTotalMinutes(events: events)
+        }
+
+        // If no categories selected, all events count (safeguard)
+        guard !preferences.goalEligibleCategories.isEmpty else {
+            return calculateTotalMinutes(events: events)
+        }
+
+        // Filter events based on category eligibility
+        let eligibleEvents = events.filter { event in
+            // Events without categories
+            guard let category = event.category else {
+                return preferences.includeUncategorizedInGoals
+            }
+
+            // Check if category is in allow-list
+            return preferences.goalEligibleCategories.contains(category)
+        }
+
+        return calculateTotalMinutes(events: eligibleEvents)
+    }
 }

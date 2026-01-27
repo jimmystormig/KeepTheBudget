@@ -12,15 +12,17 @@ struct SettingsView: View {
     let authManager: AuthManager
     let graphAPIService: GraphAPIService
     let onCalendarChange: () -> Void
+    let timeSummary: TimeSummary?
 
     @State private var preferences: AppPreferences
     @State private var selectedTab = 0
 
-    init(storageManager: StorageManager, authManager: AuthManager, graphAPIService: GraphAPIService, onCalendarChange: @escaping () -> Void) {
+    init(storageManager: StorageManager, authManager: AuthManager, graphAPIService: GraphAPIService, timeSummary: TimeSummary?, onCalendarChange: @escaping () -> Void) {
         self.storageManager = storageManager
         self.authManager = authManager
         self.graphAPIService = graphAPIService
         self.onCalendarChange = onCalendarChange
+        self.timeSummary = timeSummary
         _preferences = State(initialValue: storageManager.loadPreferences())
     }
 
@@ -56,7 +58,7 @@ struct SettingsView: View {
             Group {
                 switch selectedTab {
                 case 0:
-                    GoalsTab(preferences: $preferences, storageManager: storageManager)
+                    GoalsTab(preferences: $preferences, storageManager: storageManager, timeSummary: timeSummary)
                 case 1:
                     CalendarTab(onCalendarChange: onCalendarChange)
                 case 2:
@@ -68,7 +70,7 @@ struct SettingsView: View {
                 case 5:
                     AISettingsTab(storageManager: storageManager)
                 default:
-                    GoalsTab(preferences: $preferences, storageManager: storageManager)
+                    GoalsTab(preferences: $preferences, storageManager: storageManager, timeSummary: timeSummary)
                 }
             }
         }
@@ -105,6 +107,12 @@ struct TabButton: View {
 struct GoalsTab: View {
     @Binding var preferences: AppPreferences
     let storageManager: StorageManager
+    let timeSummary: TimeSummary?
+
+    var allCategories: [String] {
+        guard let summary = timeSummary else { return [] }
+        return Array(Set(summary.weeklyCategoryMinutes.keys)).sorted()
+    }
 
     var body: some View {
         ScrollView {
@@ -180,6 +188,101 @@ struct GoalsTab: View {
                             TextField("", value: $preferences.refreshIntervalMinutes, format: .number)
                                 .frame(width: 50)
                             Text("minutes")
+                        }
+                    }
+                }
+
+                Divider()
+
+                // Category Filtering Section
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Category-Based Goal Filtering")
+                        .font(.headline)
+
+                    Toggle("Enable category filtering for goals", isOn: $preferences.categoryFilteringEnabled)
+                        .toggleStyle(.switch)
+
+                    if preferences.categoryFilteringEnabled {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Select which categories count toward your goals:")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                                .padding(.top, 5)
+
+                            if !allCategories.isEmpty {
+                                ScrollView {
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        ForEach(allCategories, id: \.self) { category in
+                                            HStack {
+                                                Toggle(isOn: Binding(
+                                                    get: { preferences.goalEligibleCategories.contains(category) },
+                                                    set: { enabled in
+                                                        if enabled {
+                                                            preferences.goalEligibleCategories.insert(category)
+                                                        } else {
+                                                            preferences.goalEligibleCategories.remove(category)
+                                                        }
+                                                    }
+                                                )) {
+                                                    HStack {
+                                                        Text(category)
+                                                        Spacer()
+                                                        if let weeklyMinutes = timeSummary?.weeklyCategoryMinutes[category] {
+                                                            Text(TimeFormatter.format(minutes: weeklyMinutes))
+                                                                .foregroundColor(.secondary)
+                                                                .font(.caption)
+                                                        }
+                                                    }
+                                                }
+                                                .toggleStyle(.checkbox)
+                                            }
+                                        }
+                                    }
+                                }
+                                .frame(maxHeight: 150)
+                                .border(Color.gray.opacity(0.2), width: 1)
+                                .padding(.vertical, 5)
+                            } else {
+                                Text("No categories found. Events with \" - \" in their subject will appear here.")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .padding(.vertical, 5)
+                            }
+
+                            Toggle("Include uncategorized events", isOn: $preferences.includeUncategorizedInGoals)
+                                .toggleStyle(.checkbox)
+                                .help("Events without \" - \" in subject")
+
+                            if let summary = timeSummary, preferences.categoryFilteringEnabled {
+                                Divider()
+                                    .padding(.vertical, 5)
+
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("Total Time:")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                        Text(TimeFormatter.format(minutes: summary.weeklyMinutes))
+                                            .font(.body)
+                                            .fontWeight(.medium)
+                                    }
+
+                                    Spacer()
+
+                                    VStack(alignment: .trailing, spacing: 4) {
+                                        Text("Goal-Eligible:")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                        Text(TimeFormatter.format(minutes: summary.weeklyGoalEligibleMinutes))
+                                            .font(.body)
+                                            .fontWeight(.medium)
+                                            .foregroundColor(.blue)
+                                    }
+                                }
+                                .padding(10)
+                                .background(Color.blue.opacity(0.1))
+                                .cornerRadius(6)
+                            }
                         }
                     }
                 }

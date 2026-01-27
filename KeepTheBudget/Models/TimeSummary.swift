@@ -15,12 +15,16 @@ struct TimeSummary {
     let dailyCategoryMinutes: [String: Int]
     let weeklyCategoryMinutes: [String: Int]
 
+    // Goal-eligible time (filtered by category preferences)
+    let dailyGoalEligibleMinutes: Int
+    let weeklyGoalEligibleMinutes: Int
+
     var dailyStatus: GoalStatus {
-        dailyMinutes > dailyGoalMinutes ? .overGoal : .normal
+        dailyGoalEligibleMinutes > dailyGoalMinutes ? .overGoal : .normal
     }
 
     var weeklyStatus: GoalStatus {
-        weeklyMinutes > weeklyGoalMinutes ? .overGoal : .normal
+        weeklyGoalEligibleMinutes > weeklyGoalMinutes ? .overGoal : .normal
     }
 
     var showWarning: Bool {
@@ -35,6 +39,16 @@ struct TimeSummary {
     var weeklyPercentage: Double {
         guard weeklyGoalMinutes > 0 else { return 0 }
         return Double(weeklyMinutes) / Double(weeklyGoalMinutes) * 100
+    }
+
+    var dailyGoalPercentage: Double {
+        guard dailyGoalMinutes > 0 else { return 0 }
+        return Double(dailyGoalEligibleMinutes) / Double(dailyGoalMinutes) * 100
+    }
+
+    var weeklyGoalPercentage: Double {
+        guard weeklyGoalMinutes > 0 else { return 0 }
+        return Double(weeklyGoalEligibleMinutes) / Double(weeklyGoalMinutes) * 100
     }
 
     /// Categories sorted by daily time (descending)

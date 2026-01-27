@@ -12,6 +12,7 @@ struct PopoverView: View {
     let lastUpdateTime: Date?
     let isLoading: Bool
     let errorMessage: String?
+    let preferences: AppPreferences
     let onRefresh: () -> Void
     let onOpenSettings: () -> Void
     let onShowReport: () -> Void
@@ -30,7 +31,7 @@ struct PopoverView: View {
                             Text("Today:")
                                 .font(.headline)
                             Spacer()
-                            Text(TimeFormatter.format(minutes: summary.dailyMinutes))
+                            Text(TimeFormatter.format(minutes: summary.dailyGoalEligibleMinutes))
                                 .font(.headline)
                                 .foregroundColor(summary.dailyStatus == .overGoal ? .red : .primary)
                             Text("/ \(TimeFormatter.format(minutes: summary.dailyGoalMinutes))")
@@ -38,13 +39,20 @@ struct PopoverView: View {
                                 .foregroundColor(.secondary)
                         }
 
+                        // Show total time if different from goal-eligible
+                        if summary.dailyMinutes != summary.dailyGoalEligibleMinutes {
+                            Text("Total: \(TimeFormatter.format(minutes: summary.dailyMinutes))")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+
                         ProgressBar(
-                            percentage: min(summary.dailyPercentage, 100),
+                            percentage: min(summary.dailyGoalPercentage, 100),
                             color: summary.dailyStatus == .overGoal ? .red : .blue
                         )
 
                         HStack {
-                            Text("\(Int(summary.dailyPercentage))%")
+                            Text("\(Int(summary.dailyGoalPercentage))%")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                             Spacer()
@@ -64,7 +72,9 @@ struct PopoverView: View {
                             CategoryBreakdownView(
                                 title: "Categories",
                                 categories: summary.categoriesSortedByDailyTime,
-                                isDaily: true
+                                isDaily: true,
+                                goalEligibleCategories: preferences.goalEligibleCategories,
+                                categoryFilteringEnabled: preferences.categoryFilteringEnabled
                             )
                             .padding(.top, 8)
                         }
@@ -78,7 +88,7 @@ struct PopoverView: View {
                             Text("This Week:")
                                 .font(.headline)
                             Spacer()
-                            Text(TimeFormatter.format(minutes: summary.weeklyMinutes))
+                            Text(TimeFormatter.format(minutes: summary.weeklyGoalEligibleMinutes))
                                 .font(.headline)
                                 .foregroundColor(summary.weeklyStatus == .overGoal ? .red : .primary)
                             Text("/ \(TimeFormatter.format(minutes: summary.weeklyGoalMinutes))")
@@ -86,13 +96,20 @@ struct PopoverView: View {
                                 .foregroundColor(.secondary)
                         }
 
+                        // Show total time if different from goal-eligible
+                        if summary.weeklyMinutes != summary.weeklyGoalEligibleMinutes {
+                            Text("Total: \(TimeFormatter.format(minutes: summary.weeklyMinutes))")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+
                         ProgressBar(
-                            percentage: min(summary.weeklyPercentage, 100),
+                            percentage: min(summary.weeklyGoalPercentage, 100),
                             color: summary.weeklyStatus == .overGoal ? .red : .blue
                         )
 
                         HStack {
-                            Text("\(Int(summary.weeklyPercentage))%")
+                            Text("\(Int(summary.weeklyGoalPercentage))%")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                             Spacer()
@@ -112,7 +129,9 @@ struct PopoverView: View {
                             CategoryBreakdownView(
                                 title: "Categories",
                                 categories: summary.categoriesSortedByWeeklyTime,
-                                isDaily: false
+                                isDaily: false,
+                                goalEligibleCategories: preferences.goalEligibleCategories,
+                                categoryFilteringEnabled: preferences.categoryFilteringEnabled
                             )
                             .padding(.top, 8)
                         }

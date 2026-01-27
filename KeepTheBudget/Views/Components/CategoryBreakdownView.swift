@@ -11,6 +11,8 @@ struct CategoryBreakdownView: View {
     let title: String  // "Today's Categories" or "This Week's Categories"
     let categories: [CategorySummary]
     let isDaily: Bool  // true = show dailyMinutes, false = show weeklyMinutes
+    let goalEligibleCategories: Set<String>
+    let categoryFilteringEnabled: Bool
 
     @State private var isExpanded = true
 
@@ -39,6 +41,13 @@ struct CategoryBreakdownView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     ForEach(categories) { categorySummary in
                         HStack {
+                            // Visual indicator for goal eligibility
+                            if categoryFilteringEnabled {
+                                Circle()
+                                    .fill(isGoalEligible(categorySummary.category) ? Color.green : Color.gray)
+                                    .frame(width: 6, height: 6)
+                            }
+
                             Text(categorySummary.category)
                                 .font(.caption)
                                 .foregroundColor(.primary)
@@ -51,11 +60,20 @@ struct CategoryBreakdownView: View {
                                 .monospacedDigit()
                         }
                         .padding(.leading, 20)
+                        .help(categoryFilteringEnabled ?
+                              (isGoalEligible(categorySummary.category) ?
+                               "This category counts toward your goals" :
+                               "Excluded from goals") :
+                              "")
                     }
                 }
                 .transition(.opacity.combined(with: .slide))
             }
         }
         .animation(.easeInOut(duration: 0.2), value: isExpanded)
+    }
+
+    private func isGoalEligible(_ category: String) -> Bool {
+        goalEligibleCategories.contains(category)
     }
 }

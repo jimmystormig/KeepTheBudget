@@ -13,6 +13,11 @@ struct AppPreferences: Codable, Equatable {
     var weeklyGoalMinutes: Int = 2400 // 40 hours default
     var refreshIntervalMinutes: Int = 10
 
+    // Category-based goal filtering
+    var categoryFilteringEnabled: Bool = false
+    var goalEligibleCategories: Set<String> = []
+    var includeUncategorizedInGoals: Bool = false
+
     var dailyGoalHours: Int {
         get { dailyGoalMinutes / 60 }
         set { dailyGoalMinutes = newValue * 60 + (dailyGoalMinutes % 60) }

@@ -185,12 +185,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     private func updatePopoverContent() {
         guard popover.isShown else { return }
 
+        let preferences = storageManager.loadPreferences()
+
         popover.contentViewController = NSHostingController(
             rootView: PopoverView(
                 timeSummary: timeSummary,
                 lastUpdateTime: lastUpdateTime,
                 isLoading: isLoading,
                 errorMessage: errorMessage,
+                preferences: preferences,
                 onRefresh: { [weak self] in
                     Task { await self?.refreshData() }
                 },
@@ -224,12 +227,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
                 popover.performClose(nil)
             } else {
                 // Update popover content with current state before showing
+                let preferences = storageManager.loadPreferences()
+
                 popover.contentViewController = NSHostingController(
                     rootView: PopoverView(
                         timeSummary: timeSummary,
                         lastUpdateTime: lastUpdateTime,
                         isLoading: isLoading,
                         errorMessage: errorMessage,
+                        preferences: preferences,
                         onRefresh: { [weak self] in
                             Task { await self?.refreshData() }
                         },
@@ -280,30 +286,103 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         icon?.isTemplate = true
         button.image = icon
 
-        // Format time display: "6h 30m / 32h 15m"
-        let dailyStr = TimeFormatter.format(minutes: summary.dailyMinutes)
-        let weeklyStr = TimeFormatter.format(minutes: summary.weeklyMinutes)
+        let preferences = storageManager.loadPreferences()
 
-        // Build attributed string with selective red coloring
-        let attributedTitle = NSMutableAttributedString()
+        // Two-line format when filtering enabled, single-line otherwise
+        if preferences.categoryFilteringEnabled && summary.dailyMinutes != summary.dailyGoalEligibleMinutes {
+            // Line 1: Goal-eligible time (what counts toward goals)
+            let goalDailyStr = TimeFormatter.format(minutes: summary.dailyGoalEligibleMinutes)
+            let goalWeeklyStr = TimeFormatter.format(minutes: summary.weeklyGoalEligibleMinutes)
 
-        // Add space
-        attributedTitle.append(NSAttributedString(string: " "))
+            // Line 2: Total time
+            let totalDailyStr = TimeFormatter.format(minutes: summary.dailyMinutes)
+            let totalWeeklyStr = TimeFormatter.format(minutes: summary.weeklyMinutes)
 
-        // Add daily time (red if over goal)
-        let dailyAttributes: [NSAttributedString.Key: Any] = summary.dailyStatus == .overGoal ?
-            [.foregroundColor: NSColor.red] : [:]
-        attributedTitle.append(NSAttributedString(string: dailyStr, attributes: dailyAttributes))
+            let attributedTitle = NSMutableAttributedString()
 
-        // Add separator (always normal color)
-        attributedTitle.append(NSAttributedString(string: " / "))
+            // Use same font size for both lines
+            let font = NSFont.systemFont(ofSize: 10)
 
-        // Add weekly time (red if over goal)
-        let weeklyAttributes: [NSAttributedString.Key: Any] = summary.weeklyStatus == .overGoal ?
-            [.foregroundColor: NSColor.red] : [:]
-        attributedTitle.append(NSAttributedString(string: weeklyStr, attributes: weeklyAttributes))
+            // Paragraph style with minimal spacing
+            let paragraphStyle = NSMutableParagraphStyle()
+            paragraphStyle.lineSpacing = 0
+            paragraphStyle.minimumLineHeight = 10
+            paragraphStyle.maximumLineHeight = 10
 
-        button.attributedTitle = attributedTitle
+            // Baseline offset to push text down (negative moves down)
+            let baselineOffset: CGFloat = -3
+
+            // Top line (goal-eligible) - no icon needed, button already has one
+            var goalDailyAttributes: [NSAttributedString.Key: Any] = [
+                .font: font,
+                .baselineOffset: baselineOffset
+            ]
+            if summary.dailyStatus == .overGoal {
+                goalDailyAttributes[.foregroundColor] = NSColor.red
+            }
+            attributedTitle.append(NSAttributedString(string: goalDailyStr, attributes: goalDailyAttributes))
+
+            attributedTitle.append(NSAttributedString(string: " / ", attributes: [
+                .font: font,
+                .baselineOffset: baselineOffset
+            ]))
+
+            var goalWeeklyAttributes: [NSAttributedString.Key: Any] = [
+                .font: font,
+                .baselineOffset: baselineOffset
+            ]
+            if summary.weeklyStatus == .overGoal {
+                goalWeeklyAttributes[.foregroundColor] = NSColor.red
+            }
+            attributedTitle.append(NSAttributedString(string: goalWeeklyStr, attributes: goalWeeklyAttributes))
+
+            // Newline
+            attributedTitle.append(NSAttributedString(string: "\n", attributes: [
+                .baselineOffset: baselineOffset
+            ]))
+
+            // Bottom line (total) - same font size, gray color
+            let bottomAttributes: [NSAttributedString.Key: Any] = [
+                .font: font,
+                .foregroundColor: NSColor.secondaryLabelColor,
+                .baselineOffset: baselineOffset
+            ]
+
+            let bottomLine = NSAttributedString(
+                string: "\(totalDailyStr) / \(totalWeeklyStr)",
+                attributes: bottomAttributes
+            )
+            attributedTitle.append(bottomLine)
+
+            // Apply paragraph style to entire string
+            attributedTitle.addAttribute(.paragraphStyle, value: paragraphStyle, range: NSRange(location: 0, length: attributedTitle.length))
+
+            button.attributedTitle = attributedTitle
+        } else {
+            // Single-line format (original behavior)
+            let dailyStr = TimeFormatter.format(minutes: summary.dailyGoalEligibleMinutes)
+            let weeklyStr = TimeFormatter.format(minutes: summary.weeklyGoalEligibleMinutes)
+
+            let attributedTitle = NSMutableAttributedString()
+
+            // Add space
+            attributedTitle.append(NSAttributedString(string: " "))
+
+            // Add daily time (red if over goal)
+            let dailyAttributes: [NSAttributedString.Key: Any] = summary.dailyStatus == .overGoal ?
+                [.foregroundColor: NSColor.red] : [:]
+            attributedTitle.append(NSAttributedString(string: dailyStr, attributes: dailyAttributes))
+
+            // Add separator (always normal color)
+            attributedTitle.append(NSAttributedString(string: " / "))
+
+            // Add weekly time (red if over goal)
+            let weeklyAttributes: [NSAttributedString.Key: Any] = summary.weeklyStatus == .overGoal ?
+                [.foregroundColor: NSColor.red] : [:]
+            attributedTitle.append(NSAttributedString(string: weeklyStr, attributes: weeklyAttributes))
+
+            button.attributedTitle = attributedTitle
+        }
     }
 
     private func checkAuthenticationAndInitialize() async {
@@ -549,6 +628,17 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             let weeklyMinutes = timeCalculator.calculateTotalMinutes(events: ownWeeklyEvents)
             print("   ⏱️  Calculated: \(dailyMinutes) daily minutes, \(weeklyMinutes) weekly minutes")
 
+            // Calculate goal-eligible totals (filtered by category preferences)
+            let dailyGoalEligibleMinutes = timeCalculator.calculateGoalEligibleMinutes(
+                events: ownDailyEvents,
+                preferences: preferences
+            )
+            let weeklyGoalEligibleMinutes = timeCalculator.calculateGoalEligibleMinutes(
+                events: ownWeeklyEvents,
+                preferences: preferences
+            )
+            print("   🎯 Goal-eligible: \(dailyGoalEligibleMinutes) daily minutes, \(weeklyGoalEligibleMinutes) weekly minutes")
+
             // Calculate category breakdowns (only events with " - " will be categorized)
             let dailyCategoryMinutes = timeCalculator.calculateCategoryBreakdown(events: ownDailyEvents)
             let weeklyCategoryMinutes = timeCalculator.calculateCategoryBreakdown(events: ownWeeklyEvents)
@@ -562,7 +652,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
                 dailyGoalMinutes: preferences.dailyGoalMinutes,
                 weeklyGoalMinutes: preferences.weeklyGoalMinutes,
                 dailyCategoryMinutes: dailyCategoryMinutes,
-                weeklyCategoryMinutes: weeklyCategoryMinutes
+                weeklyCategoryMinutes: weeklyCategoryMinutes,
+                dailyGoalEligibleMinutes: dailyGoalEligibleMinutes,
+                weeklyGoalEligibleMinutes: weeklyGoalEligibleMinutes
             )
 
             await MainActor.run {
@@ -653,6 +745,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             storageManager: storageManager,
             authManager: authManager,
             graphAPIService: graphAPIService,
+            timeSummary: timeSummary,
             onCalendarChange: { [weak self] in
                 print("🔧 Calendar change requested from settings")
                 Task {
