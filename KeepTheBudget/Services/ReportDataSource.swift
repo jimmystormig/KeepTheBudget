@@ -47,15 +47,12 @@ class CalendarDataSource: ReportDataSource {
             to: endDate
         )
 
-        // 4. Filter to user's own events
+        // 4. Filter to user's own events (only filter needed)
         let ownEvents = events.filter {
             $0.organizerEmail.caseInsensitiveCompare(userProfile.mail) == .orderedSame
         }
 
-        // 5. Filter to events with valid tracking format
-        let validEvents = ownEvents.filter { $0.isValidForTracking }
-
-        return validEvents
+        return ownEvents
     }
 }
 

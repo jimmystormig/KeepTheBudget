@@ -472,6 +472,21 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             updatePopoverContent()
         }
 
+        // Ensure services are initialized before attempting refresh
+        guard servicesInitialized, authManager != nil, graphAPIService != nil else {
+            print("⏭️  Services not initialized - skipping refresh")
+            await MainActor.run {
+                isLoading = false
+                updatePopoverContent()
+            }
+            return
+        }
+
+        // Proactively refresh tokens if needed (before making API calls)
+        print("🔐 Checking token status before data refresh...")
+        await authManager.proactiveTokenRefresh()
+        print("🔐 Token check complete, proceeding with data fetch...")
+
         do {
             let preferences = storageManager.loadPreferences()
             guard let calendarId = preferences.selectedCalendarId else {
@@ -513,19 +528,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
                 print("   🔍 First event subject: \(firstEvent.subject)")
             }
 
-            // Filter own events
+            // Filter own events (only filter: user must be organizer)
             let ownDailyEvents = dailyEvents.filter { $0.organizerEmail.caseInsensitiveCompare(userProfile.mail) == .orderedSame }
             let ownWeeklyEvents = weeklyEvents.filter { $0.organizerEmail.caseInsensitiveCompare(userProfile.mail) == .orderedSame }
 
-            // Filter for events containing " - "
-            let validDailyEvents = ownDailyEvents.filter { $0.isValidForTracking }
-            let validWeeklyEvents = ownWeeklyEvents.filter { $0.isValidForTracking }
-
             print("   ✅ After organizer filter: \(ownDailyEvents.count) daily events, \(ownWeeklyEvents.count) weekly events")
-            print("   ✅ After category filter: \(validDailyEvents.count) daily events, \(validWeeklyEvents.count) weekly events")
-            if validDailyEvents.isEmpty && !ownDailyEvents.isEmpty {
-                print("   ⚠️  WARNING: All daily events filtered out - no events contain ' - '")
-            }
 
             // Debug: Show first event details
             if let firstEvent = ownDailyEvents.first {
@@ -534,16 +541,17 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
                 print("      End: \(firstEvent.end)")
                 print("      Duration: \(firstEvent.durationMinutes) minutes")
                 print("      All-day: \(firstEvent.isAllDay)")
+                print("      Has category: \(firstEvent.category != nil)")
             }
 
-            // Calculate totals
-            let dailyMinutes = timeCalculator.calculateTotalMinutes(events: validDailyEvents)
-            let weeklyMinutes = timeCalculator.calculateTotalMinutes(events: validWeeklyEvents)
+            // Calculate totals (using ALL own events, not just categorized ones)
+            let dailyMinutes = timeCalculator.calculateTotalMinutes(events: ownDailyEvents)
+            let weeklyMinutes = timeCalculator.calculateTotalMinutes(events: ownWeeklyEvents)
             print("   ⏱️  Calculated: \(dailyMinutes) daily minutes, \(weeklyMinutes) weekly minutes")
 
-            // Calculate category breakdowns
-            let dailyCategoryMinutes = timeCalculator.calculateCategoryBreakdown(events: validDailyEvents)
-            let weeklyCategoryMinutes = timeCalculator.calculateCategoryBreakdown(events: validWeeklyEvents)
+            // Calculate category breakdowns (only events with " - " will be categorized)
+            let dailyCategoryMinutes = timeCalculator.calculateCategoryBreakdown(events: ownDailyEvents)
+            let weeklyCategoryMinutes = timeCalculator.calculateCategoryBreakdown(events: ownWeeklyEvents)
             print("   📊 Daily categories: \(dailyCategoryMinutes.keys.sorted().joined(separator: ", "))")
             print("   📊 Weekly categories: \(weeklyCategoryMinutes.keys.sorted().joined(separator: ", "))")
 
@@ -769,11 +777,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             to: endDate
         )
 
-        // Filter to only user's own events with valid tracking format
+        // Filter to only user's own events
         let ownEvents = events.filter { $0.organizerEmail.caseInsensitiveCompare(userProfile.mail) == .orderedSame }
-        let validEvents = ownEvents.filter { $0.isValidForTracking }
 
-        return validEvents
+        return ownEvents
     }
 
     // Generate TimeReport only (for WeeklyReportView)

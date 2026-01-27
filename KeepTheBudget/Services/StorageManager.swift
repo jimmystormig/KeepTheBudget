@@ -13,6 +13,8 @@ struct ConfigurationSnapshot {
     let clientId: String?
     let tenantId: String?
     let accessToken: String?
+    let refreshToken: String?
+    let tokenExpiry: String?
     let azureOpenAIEndpoint: String?
     let azureOpenAIApiKey: String?
     let azureOpenAIDeploymentName: String?
@@ -59,17 +61,42 @@ class StorageManager {
         return keychain.loadString(forKey: KeychainKeys.refreshToken)
     }
 
-    func saveTokenExpiry(_ date: Date) {
-        userDefaults.set(date, forKey: KeychainKeys.tokenExpiry)
+    func saveTokenExpiry(_ date: Date) -> Bool {
+        let timestamp = date.timeIntervalSince1970
+        let timestampString = String(timestamp)
+        let success = keychain.save(timestampString, forKey: KeychainKeys.tokenExpiry)
+
+        if success {
+            updateConfigurationBundle()
+        }
+
+        return success
     }
 
     func loadTokenExpiry() -> Date? {
-        return userDefaults.object(forKey: KeychainKeys.tokenExpiry) as? Date
+        // First check keychain
+        if let timestampString = keychain.loadString(forKey: KeychainKeys.tokenExpiry),
+           let timestamp = TimeInterval(timestampString) {
+            return Date(timeIntervalSince1970: timestamp)
+        }
+
+        // Migration: Try loading from old UserDefaults location
+        if let legacyDate = userDefaults.object(forKey: KeychainKeys.tokenExpiry) as? Date {
+            print("⚠️  Migrating token expiry from UserDefaults to Keychain")
+            _ = saveTokenExpiry(legacyDate)
+            userDefaults.removeObject(forKey: KeychainKeys.tokenExpiry)
+            return legacyDate
+        }
+
+        return nil
     }
 
     func deleteAllTokens() {
         _ = keychain.delete(forKey: KeychainKeys.accessToken)
         _ = keychain.delete(forKey: KeychainKeys.refreshToken)
+        _ = keychain.delete(forKey: KeychainKeys.tokenExpiry)
+
+        // Also clean up legacy UserDefaults location if it exists
         userDefaults.removeObject(forKey: KeychainKeys.tokenExpiry)
 
         // Also update the bundle to reflect deleted token
@@ -163,10 +190,14 @@ class StorageManager {
     /// Update the configuration bundle to stay in sync with individual items
     /// This is called whenever individual items are saved
     private func updateConfigurationBundle() {
+        let expiryTimestamp = loadTokenExpiry().map { String($0.timeIntervalSince1970) }
+
         let bundle = KeychainConfigurationBundle(
             clientId: loadClientId(),
             tenantId: loadTenantId(),
             accessToken: loadAccessToken(),
+            refreshToken: loadRefreshToken(),
+            tokenExpiry: expiryTimestamp,
             azureOpenAIEndpoint: keychain.loadString(forKey: AzureOpenAIKeys.endpoint),
             azureOpenAIApiKey: keychain.loadString(forKey: AzureOpenAIKeys.apiKey),
             azureOpenAIDeploymentName: keychain.loadString(forKey: AzureOpenAIKeys.deploymentName)
@@ -187,12 +218,16 @@ class StorageManager {
             print("   Client ID: \(bundle.clientId != nil ? "present" : "missing")")
             print("   Tenant ID: \(bundle.tenantId != nil ? "present" : "missing")")
             print("   Access Token: \(bundle.accessToken != nil ? "present" : "missing")")
+            print("   Refresh Token: \(bundle.refreshToken != nil ? "present" : "missing")")
+            print("   Token Expiry: \(bundle.tokenExpiry != nil ? "present" : "missing")")
             print("   Azure OpenAI: \(bundle.azureOpenAIEndpoint != nil ? "configured" : "not configured")")
 
             return ConfigurationSnapshot(
                 clientId: bundle.clientId,
                 tenantId: bundle.tenantId,
                 accessToken: bundle.accessToken,
+                refreshToken: bundle.refreshToken,
+                tokenExpiry: bundle.tokenExpiry,
                 azureOpenAIEndpoint: bundle.azureOpenAIEndpoint,
                 azureOpenAIApiKey: bundle.azureOpenAIApiKey,
                 azureOpenAIDeploymentName: bundle.azureOpenAIDeploymentName
@@ -205,6 +240,8 @@ class StorageManager {
         let clientId = loadClientId()
         let tenantId = loadTenantId()
         let accessToken = loadAccessToken()
+        let refreshToken = loadRefreshToken()
+        let tokenExpiry = loadTokenExpiry().map { String($0.timeIntervalSince1970) }
         let azureEndpoint = keychain.loadString(forKey: AzureOpenAIKeys.endpoint)
         let azureApiKey = keychain.loadString(forKey: AzureOpenAIKeys.apiKey)
         let azureDeployment = keychain.loadString(forKey: AzureOpenAIKeys.deploymentName)
@@ -214,6 +251,8 @@ class StorageManager {
             clientId: clientId,
             tenantId: tenantId,
             accessToken: accessToken,
+            refreshToken: refreshToken,
+            tokenExpiry: tokenExpiry,
             azureOpenAIEndpoint: azureEndpoint,
             azureOpenAIApiKey: azureApiKey,
             azureOpenAIDeploymentName: azureDeployment
@@ -224,12 +263,16 @@ class StorageManager {
         print("   Client ID: \(clientId != nil ? "present" : "missing")")
         print("   Tenant ID: \(tenantId != nil ? "present" : "missing")")
         print("   Access Token: \(accessToken != nil ? "present" : "missing")")
+        print("   Refresh Token: \(refreshToken != nil ? "present" : "missing")")
+        print("   Token Expiry: \(tokenExpiry != nil ? "present" : "missing")")
         print("   Azure OpenAI: \(azureEndpoint != nil ? "configured" : "not configured")")
 
         return ConfigurationSnapshot(
             clientId: clientId,
             tenantId: tenantId,
             accessToken: accessToken,
+            refreshToken: refreshToken,
+            tokenExpiry: tokenExpiry,
             azureOpenAIEndpoint: azureEndpoint,
             azureOpenAIApiKey: azureApiKey,
             azureOpenAIDeploymentName: azureDeployment

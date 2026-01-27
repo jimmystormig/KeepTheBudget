@@ -105,7 +105,21 @@ class AuthManager {
 
         let config = MSALPublicClientApplicationConfig(clientId: clientId, redirectUri: redirectUri, authority: authority)
 
+        // Log cache configuration
+        print("   MSAL cache keychain group: \(config.cacheConfig.keychainSharingGroup ?? "(default - app's keychain)")")
+
         msalApplication = try MSALPublicClientApplication(configuration: config)
+
+        // Log MSAL cache status after initialization
+        if let app = msalApplication {
+            do {
+                let accounts = try app.allAccounts()
+                print("   MSAL cache has \(accounts.count) persisted account(s)")
+            } catch {
+                print("   ⚠️  Could not read MSAL cache: \(error)")
+            }
+        }
+
         print("✅ MSAL initialized successfully")
     }
 
@@ -143,8 +157,114 @@ class AuthManager {
         let timeRemaining = expiry.timeIntervalSinceNow
         print("      hasValidTokens: token expires in \(timeRemaining) seconds")
 
-        // Check if token expires within next 5 minutes
-        return timeRemaining > 300
+        // Check if token expires within next 1 minute (proactive refresh handles the rest)
+        return timeRemaining > 60
+    }
+
+    /// Check if token should be proactively refreshed before expiration
+    /// Returns true if token expires within 45 minutes (75% of typical 60-min lifetime)
+    func shouldProactivelyRefresh() -> Bool {
+        guard let expiry = storageManager.loadTokenExpiry() else {
+            print("   ⚠️  No token expiry - cannot determine refresh need")
+            return false
+        }
+
+        let timeRemaining = expiry.timeIntervalSinceNow
+
+        // Urgent: Token expired or expires within 5 minutes
+        if timeRemaining < 300 {
+            print("🚨 Token URGENT: expires in \(Int(timeRemaining))s")
+            return true
+        }
+
+        // Proactive: Refresh when < 45 minutes remain (75% through 60-min token lifetime)
+        // This gives us multiple chances to refresh before expiration
+        let refreshThreshold: TimeInterval = 2700  // 45 minutes (was 30)
+
+        if timeRemaining < refreshThreshold {
+            print("ℹ️  Token expires in \(Int(timeRemaining/60))m - proactive refresh recommended")
+            return true
+        }
+
+        return false
+    }
+
+    /// Perform proactive token refresh without requiring user interaction
+    /// Safe to call periodically in background - only refreshes if needed
+    func proactiveTokenRefresh() async {
+        print("🔄 Proactive token refresh check")
+
+        guard isInitialized() else {
+            print("   ⏭️  Not initialized, skipping")
+            return
+        }
+
+        // Always log token status for debugging
+        if let expiry = storageManager.loadTokenExpiry() {
+            let minutesRemaining = Int(expiry.timeIntervalSinceNow / 60)
+            print("   📊 Current token status: \(minutesRemaining) minutes remaining")
+        } else {
+            print("   ⚠️  No token expiry found")
+        }
+
+        guard shouldProactivelyRefresh() else {
+            if let expiry = storageManager.loadTokenExpiry() {
+                let minutesRemaining = Int(expiry.timeIntervalSinceNow / 60)
+                print("   ✅ Token valid for \(minutesRemaining)m, no refresh needed")
+            }
+            return
+        }
+
+        print("   🔄 Starting proactive refresh...")
+
+        // Check if MSAL has accounts cached
+        if let application = msalApplication {
+            do {
+                let accounts = try application.allAccounts()
+                print("   📋 MSAL cache has \(accounts.count) account(s)")
+                if accounts.isEmpty {
+                    print("   ❌ CRITICAL: MSAL cache empty - cannot refresh silently!")
+                    print("   💡 User will need to re-authenticate on next API call")
+                    return
+                }
+            } catch {
+                print("   ❌ Failed to check MSAL accounts: \(error)")
+                return
+            }
+        }
+
+        do {
+            _ = try await refreshAccessToken()
+            print("   ✅ Proactive refresh successful")
+        } catch {
+            print("   ❌ CRITICAL: Proactive refresh FAILED!")
+            print("   Error: \(error.localizedDescription)")
+            print("   Error type: \(type(of: error))")
+            if let authError = error as? AuthError {
+                print("   AuthError: \(authError)")
+            }
+            // Don't throw - but this will cause re-auth on next API call
+        }
+    }
+
+    /// Log current token status for debugging
+    func logTokenStatus() {
+        print("🔍 Token Status:")
+        print("   Access token: \(storageManager.loadAccessToken() != nil ? "present" : "missing")")
+        print("   MSAL cache: \(isInitialized() ? "initialized" : "not initialized")")
+
+        if let expiry = storageManager.loadTokenExpiry() {
+            let timeRemaining = expiry.timeIntervalSinceNow
+            let minutesRemaining = Int(timeRemaining / 60)
+
+            if timeRemaining > 0 {
+                print("   Expiry: in \(minutesRemaining) minutes")
+            } else {
+                print("   Expiry: EXPIRED \(-minutesRemaining) minutes ago")
+            }
+        } else {
+            print("   Expiry: not set")
+        }
     }
 
     func getValidAccessToken() async throws -> String {
@@ -276,8 +396,12 @@ class AuthManager {
                 let accessToken = result.accessToken
                 let expiry = result.expiresOn ?? Date().addingTimeInterval(3600) // Default to 1 hour from now
 
+                // Save access token and expiry
+                // Note: MSAL manages refresh tokens internally - we don't have access to them
                 _ = self.storageManager.saveAccessToken(accessToken)
-                self.storageManager.saveTokenExpiry(expiry)
+                _ = self.storageManager.saveTokenExpiry(expiry)
+
+                print("✅ Tokens saved (MSAL manages refresh token internally)")
 
                 continuation.resume(returning: accessToken)
             }
@@ -305,15 +429,14 @@ class AuthManager {
         print("   Found \(accounts.count) accounts")
 
         if accounts.isEmpty {
-            print("   ℹ️  No account found - this means MSAL cache was cleared or user never signed in")
+            print("   ℹ️  No account in MSAL cache - session expired")
+            print("   🔐 Throwing AuthError.sessionExpired")
+            throw AuthError.sessionExpired
         }
 
         guard let account = accounts.first else {
             print("   ❌ No account found!")
-            print("   🔐 Throwing AuthError.sessionExpired")
-            let error = AuthError.sessionExpired
-            print("       Error type before throw: \(type(of: error))")
-            throw error
+            throw AuthError.sessionExpired
         }
 
         print("   ✅ Using account: \(account.username ?? "unknown")")
@@ -360,8 +483,10 @@ class AuthManager {
                 let accessToken = result.accessToken
                 let expiry = result.expiresOn ?? Date().addingTimeInterval(3600) // Default to 1 hour from now
 
+                // Save access token and expiry
+                // Note: MSAL manages refresh tokens internally
                 _ = self.storageManager.saveAccessToken(accessToken)
-                self.storageManager.saveTokenExpiry(expiry)
+                _ = self.storageManager.saveTokenExpiry(expiry)
 
                 continuation.resume(returning: accessToken)
             }

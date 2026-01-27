@@ -15,6 +15,8 @@ struct KeychainConfigurationBundle: Codable {
     let clientId: String?
     let tenantId: String?
     let accessToken: String?
+    let refreshToken: String?
+    let tokenExpiry: String?
     let azureOpenAIEndpoint: String?
     let azureOpenAIApiKey: String?
     let azureOpenAIDeploymentName: String?
