@@ -9,7 +9,7 @@ KeepTheBudget is a macOS menu bar application that tracks scheduled time from Of
 **Tech Stack:**
 - Swift 5.9 / SwiftUI + AppKit
 - macOS 12.0+ deployment target
-- MSAL (Microsoft Authentication Library) for OAuth 2.0
+- MSAL (Microsoft Authentication Library) for OAuth 2.0 fallback
 - Microsoft Graph API v1.0 for calendar data
 
 ## Build Commands
@@ -58,7 +58,7 @@ The app uses a clean service-oriented architecture with clear separation of conc
 - Handles all NSWindow lifecycle operations (must run on main thread)
 
 **Services** (`Services/`)
-- `AuthManager`: OAuth 2.0 authentication with MSAL, token management, silent refresh, lazy initialization
+- `AuthManager`: OAuth 2.0 device code flow, manual token management, proactive refresh, MSAL fallback
 - `GraphAPIService`: Microsoft Graph API client (user profile, calendars, events)
 - `TimeCalculator`: Daily/weekly time range calculations and event duration totals
 - `StorageManager`: Keychain (tokens, MSAL config) and UserDefaults (preferences) persistence
@@ -75,11 +75,12 @@ The app uses a clean service-oriented architecture with clear separation of conc
 - `TimeSummary`: Daily/weekly totals with goal status calculation
 - `AppPreferences`: User settings (goals, calendar ID, refresh interval)
 - `GoalStatus`: Enum for tracking goal state (underGoal, onTarget, overGoal)
+- `OAuthModels`: DeviceCodeResponse, TokenResponse, OAuthErrorResponse
 
 **Views** (`Views/`)
 - `PopoverView`: Main menu displaying time summary and actions
 - `SettingsView`: Custom tabbed preferences window (Goals, Calendar, Account, Configuration, About)
-- `DeviceCodeView`: OAuth authentication UI with browser redirect
+- `DeviceCodeView`: OAuth device code display with polling and browser redirect
 - `CalendarSelectionView`: Calendar picker during setup
 - `ConfigurationSetupView`: First-launch MSAL configuration screen
 
@@ -87,10 +88,11 @@ The app uses a clean service-oriented architecture with clear separation of conc
 
 1. **Configuration Check**: App launch → `MigrationManager` auto-migrates existing users → Check Keychain for Client ID/Tenant ID
 2. **Lazy Initialization**: `AuthManager.initialize()` called after config verified → Loads credentials from Keychain → Initializes MSAL
-3. **Authentication**: `AuthManager` → MSAL interactive auth → Tokens saved to Keychain
+3. **Authentication**: Device code flow → User enters code at microsoft.com/devicelogin → Access + refresh tokens saved to Keychain
 4. **Calendar Selection**: `GraphAPIService` fetches calendars → User selects → ID saved to UserDefaults
 5. **Data Refresh**: `UpdateScheduler` triggers → `GraphAPIService` fetches events → `TimeCalculator` computes totals → `AppDelegate` updates UI
 6. **Event Filtering**: Only counts events where user is the organizer (filters out meeting invites)
+7. **Token Refresh**: Proactive refresh at 45 min → Manual refresh using refresh token → New tokens saved atomically
 
 ## Critical Threading Requirements
 
@@ -149,25 +151,84 @@ The `@Published` properties in `AppDelegate` must be updated on main thread:
 - `lastUpdateTime: Date?`
 - `errorMessage: String?`
 
-See `BUGFIX_THREAD_SAFETY.md` for detailed explanation of threading fixes.
+### Why This Matters
 
-## Microsoft Graph API Integration
+Violating main thread requirements causes crashes:
+```
+*** Terminating app due to uncaught exception 'NSInternalInconsistencyException',
+reason: 'NSWindow geometry should only be modified on the main thread!'
+```
 
-### Authentication Flow
+**Prevention**: Always wrap NSWindow/NSView operations in `await MainActor.run {}` when called from async functions.
 
-**Prerequisites**: `AuthManager.initialize()` must be called before any auth operations
+## Authentication & Token Management
+
+### Device Code Flow (Primary Method)
+
+The app uses OAuth 2.0 Device Code Flow as the primary authentication method:
+
+**Why Device Code?**
+- MSAL cache doesn't persist without Apple code signing
+- Manual token management provides full control
+- 90-day refresh tokens vs hourly re-auth
+- Simple UX: enter code in browser
+- **~2000x reduction** in authentication frequency (from ~24x/day to ~4x/year)
+
+**Flow Sequence:**
+
+1. **Initiate**: POST to `/oauth2/v2.0/devicecode` → Get user_code
+2. **Display**: Show code to user with verification URL
+3. **Poll**: POST to `/oauth2/v2.0/token` every 5 seconds
+4. **Complete**: Save access_token + refresh_token to Keychain
+
+**Critical Files:**
+- `Models/OAuthModels.swift` - DeviceCodeResponse, TokenResponse
+- `Services/AuthManager.swift` - startDeviceCodeAuth(), pollForDeviceCodeCompletion()
+- `Views/DeviceCodeView.swift` - Code display UI with polling
+- `Utilities/Constants.swift` - OAuthConstants endpoints
+
+### Manual Token Refresh
+
+**Proactive Refresh**: Triggers at 45 minutes (before 60-min expiry)
+
+**Refresh Strategy (Fallback):**
+1. Try `refreshUsingRefreshToken()` (if refresh token exists)
+2. Fall back to MSAL silent refresh (if step 1 fails)
+3. Show device code UI (if both fail)
+
+**IMPORTANT**: Microsoft rotates refresh tokens on each use. Old token becomes invalid. Both new access + refresh tokens must be saved atomically.
+
+**Token Lifecycle:**
+- Access token: 60 minutes
+- Refresh token: ~90 days
+- Storage: Keychain (encrypted, persistent)
+
+### OAuth Configuration
+
+**Endpoints** (OAuthConstants):
+- Device code: `/oauth2/v2.0/devicecode`
+- Token: `/oauth2/v2.0/token`
+
+**Scopes** (CRITICAL):
+- `Calendars.Read` - Calendar events
+- `User.Read` - User profile
+- `Mail.Read` - Future features
+- `Chat.Read` - Future features
+- `offline_access` - **REQUIRED for refresh tokens**
+
+### MSAL Fallback
+
+MSAL remains as fallback for:
+- Users without refresh tokens
+- Migration from old auth
+- Refresh token expiry/revocation
+
+**Prerequisites**: `AuthManager.initialize()` must be called before auth operations
 - Loads Client ID and Tenant ID from Keychain
 - Creates MSAL authority URL
-- Initializes `MSALPublicClientApplication`
-- Validates redirect URI against Info.plist
+- Initializes MSALPublicClientApplication
 
-**Flow Steps**:
-1. **Interactive Auth**: Opens system browser for OAuth 2.0 consent
-2. **Token Storage**: Access token + expiry saved to Keychain (managed by StorageManager)
-3. **Silent Refresh**: Automatic token refresh when expired using MSAL cache
-4. **Scopes Required**: `Calendars.Read`, `User.Read`
-
-**Error Handling**: `AuthManager` throws `AuthError.notInitialized` if auth methods called before `initialize()`
+## Microsoft Graph API Integration
 
 ### API Endpoints Used
 
@@ -227,8 +288,10 @@ Graph API returns max 100 events per page. `GraphAPIService.fetchEvents()` handl
 
 **Current Contents**:
 - Graph API endpoints and scopes only
+- OAuth endpoints for device code flow
 - **NO client ID or tenant ID** (removed for security)
 - `GraphConstants.scopes`: `["Calendars.Read", "User.Read"]`
+- `OAuthConstants.scopes`: Includes `offline_access` for refresh tokens
 
 ### Info.plist
 
@@ -291,96 +354,47 @@ Format: `🕐 6h 30m / 32h 15m` (daily / weekly)
 
 **Implementation**: `AppDelegate.updateStatusItemDisplay()` (line 95)
 
-### Attributed String Color
+## Development & Testing
 
-Only the over-goal value(s) turn red, not the separator:
+### Reset Credentials
 
-```swift
-// Daily red if over
-let dailyAttributes: [NSAttributedString.Key: Any] =
-    summary.dailyStatus == .overGoal ? [.foregroundColor: NSColor.red] : [:]
-
-// Separator stays normal
-attributedTitle.append(NSAttributedString(string: " / "))
-
-// Weekly red if over
-let weeklyAttributes: [NSAttributedString.Key: Any] =
-    summary.weeklyStatus == .overGoal ? [.foregroundColor: NSColor.red] : [:]
-```
-
-## Known Issues and Fixes
-
-### Thread Safety (FIXED)
-
-**Issue**: NSWindow operations crashed with "not on main thread" exception.
-
-**Fix**: All NSWindow and NSStatusItem operations wrapped in `await MainActor.run {}`.
-
-**Documentation**: See `BUGFIX_THREAD_SAFETY.md`
-
-### MSAL Authentication (FIXED)
-
-**Issue**: Initial plan used device code flow, but MSAL for macOS doesn't support it natively.
-
-**Fix**: Switched to interactive browser-based auth (`MSALInteractiveTokenParameters`).
-
-**Documentation**: See `BUGFIX_MSAL_AUTH.md`
-
-### SwiftUI Views in NSHostingView (FIXED)
-
-**Issue**: Creating SwiftUI views off the main thread before passing to NSHostingView caused CoreGraphics "entangle context" errors and crashes.
-
-**Fix**: All SwiftUI view creation moved inside `MainActor.run {}` blocks.
-
-**Affected Methods**: `showConfigurationSetup()`, `showDeviceCodeFlow()`, `showCalendarSelection()`, `openSettings()`
-
-### Settings TabView Display (FIXED)
-
-**Issue**: SwiftUI TabView rendered as dropdown menu instead of horizontal tabs at top.
-
-**Fix**: Replaced native TabView with custom tab bar using HStack of buttons + switch statement for content.
-
-## Development Tips
-
-### Testing Authentication
-
-**Reset All Credentials**:
+**Full reset** (tokens + config):
 ```bash
-# Delete all Keychain items (tokens + MSAL config)
 security delete-generic-password -s "office365_access_token" 2>/dev/null
+security delete-generic-password -s "office365_refresh_token" 2>/dev/null
 security delete-generic-password -s "msal_client_id" 2>/dev/null
 security delete-generic-password -s "msal_tenant_id" 2>/dev/null
 defaults delete com.nexer.KeepTheBudget
 ```
 
-**Reset Tokens Only** (keep MSAL config):
-1. Call `authManager.signOut()` programmatically
-2. Or sign out via Settings → Account → Sign Out
-3. Relaunch app to trigger fresh auth flow
+**Tokens only** (keep config):
+- Settings → Account → Sign Out → Relaunch app
 
-**Test First-Launch Flow**:
-1. Delete all credentials (see above)
-2. Launch app
-3. Should show `ConfigurationSetupView`
-4. Enter Client ID and Tenant ID
-5. Complete authentication and calendar selection
+### Testing Device Code Flow
 
-### Testing Time Calculations
+1. Reset tokens (see above)
+2. Launch app → Click "Get Sign-In Code"
+3. Verify: Large copyable code, "Open Browser" button, countdown timer
+4. Complete auth in browser
+5. Verify: Auto-detection, calendar selection appears
 
-Create test events in Office 365 Calendar:
-- Regular events: Use start/end times
-- All-day events: Should count as 8 hours
-- Others' events: Should NOT count (verify organizer filtering)
+### Testing Token Refresh
 
-### Debugging Graph API
+1. Authenticate successfully
+2. Check console for "🔍 Token Status" showing refresh token present
+3. Wait for proactive refresh (45 min trigger)
+4. Verify logs: "🔄 Refreshing access token using refresh token..."
+5. No re-authentication prompt should appear
 
-All Graph API calls have detailed logging in `GraphAPIService.swift`:
-- 🔑 Token acquisition
-- 📡 Request URLs
-- 📦 Response data
+### Debugging
+
+Graph API calls log detailed information:
+- 🔐 Authentication operations
+- 📡 Request URLs and responses
+- 🔄 Token refresh attempts
 - ❌ Errors with status codes
 
-Enable console logging in Xcode to see request/response flow.
+Enable Xcode console to see full request/response flow.
 
 ### Update Scheduler
 
@@ -410,26 +424,9 @@ if wasLoading {
 
 ## Deployment
 
-### Building and Deploying Updates
+See `DEPLOY.md` for detailed deployment instructions.
 
-**IMPORTANT**: Do NOT manually re-sign the app after building. Xcode's build process correctly applies entitlements, and manual re-signing will break the app.
-
-```bash
-# Step 1: Clean build (recommended for updates)
-xcodebuild -project KeepTheBudget.xcodeproj -scheme KeepTheBudget -configuration Debug clean build
-
-# Step 2: Kill any running instances
-killall KeepTheBudget 2>/dev/null
-
-# Step 3: Copy to Applications (without re-signing)
-rm -rf /Applications/KeepTheBudget.app
-cp -R ~/Library/Developer/Xcode/DerivedData/KeepTheBudget-*/Build/Products/Debug/KeepTheBudget.app /Applications/
-
-# Step 4: Launch
-open /Applications/KeepTheBudget.app
-```
-
-**One-liner for quick deployment:**
+**Quick deployment:**
 ```bash
 xcodebuild -project KeepTheBudget.xcodeproj -scheme KeepTheBudget -configuration Debug build && \
 killall KeepTheBudget 2>/dev/null; \
@@ -438,16 +435,7 @@ cp -R ~/Library/Developer/Xcode/DerivedData/KeepTheBudget-*/Build/Products/Debug
 open /Applications/KeepTheBudget.app
 ```
 
-**Why Debug instead of Release?**
-- Debug builds are fully tested and stable
-- Release builds may crash due to Swift optimization issues
-- Xcode's code signing with entitlements works correctly for Debug builds
-- Manual re-signing breaks the entitlements (network access, sandboxing)
-
-**Troubleshooting:**
-- If app doesn't appear in menu bar: Check that it's running from Xcode (⌘R) first to verify functionality
-- If app crashes on deployment: Never re-sign manually - always copy directly from Xcode build
-- If new files aren't included: Run `xcodegen generate` to regenerate the Xcode project
+**IMPORTANT**: Do NOT manually re-sign the app. Xcode's build process correctly applies entitlements.
 
 ## Files Not to Modify
 
@@ -455,12 +443,3 @@ open /Applications/KeepTheBudget.app
 - `project.yml` - XcodeGen config (regenerate Xcode project if changed)
 - `KeepTheBudget.entitlements` - Security entitlements
 - `Info.plist` - Must contain `msal{clientId}://auth` URL scheme matching configured Client ID
-
-## Additional Documentation
-
-- `README.md` - User-facing documentation and feature overview
-- `QUICKSTART.md` - Quick start guide for building and running
-- `IMPLEMENTATION_SUMMARY.md` - Complete implementation details and architecture
-- `INSTALLATION.md` - Installation and setup instructions
-- `BUGFIX_THREAD_SAFETY.md` - Thread safety fixes for NSWindow operations
-- `BUGFIX_MSAL_AUTH.md` - MSAL authentication implementation details
