@@ -251,6 +251,7 @@ class AuthManager {
     func logTokenStatus() {
         print("🔍 Token Status:")
         print("   Access token: \(storageManager.loadAccessToken() != nil ? "present" : "missing")")
+        print("   Refresh token: \(storageManager.loadRefreshToken() != nil ? "present" : "missing")")
         print("   MSAL cache: \(isInitialized() ? "initialized" : "not initialized")")
 
         if let expiry = storageManager.loadTokenExpiry() {
@@ -264,6 +265,16 @@ class AuthManager {
             }
         } else {
             print("   Expiry: not set")
+        }
+
+        // Check if MSAL has cached accounts
+        if let application = msalApplication {
+            do {
+                let accounts = try application.allAccounts()
+                print("   MSAL accounts: \(accounts.count)")
+            } catch {
+                print("   MSAL accounts: error reading (\(error.localizedDescription))")
+            }
         }
     }
 
@@ -346,6 +357,227 @@ class AuthManager {
         }
     }
 
+    // MARK: - Device Code Authentication
+
+    /// Start device code flow - returns device code response for UI display
+    func startDeviceCodeAuth() async throws -> DeviceCodeResponse {
+        guard let clientId = self.clientId, let tenantId = self.tenantId else {
+            throw AuthError.missingConfiguration("Client ID or Tenant ID not configured")
+        }
+
+        print("🔐 Starting device code flow...")
+        print("   Client ID: \(clientId)")
+        print("   Tenant ID: \(tenantId)")
+
+        let endpoint = OAuthConstants.deviceCodeEndpoint(tenantId: tenantId)
+        guard let url = URL(string: endpoint) else {
+            throw NSError(domain: "AuthManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "Invalid device code endpoint"])
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+
+        let bodyParams = [
+            "client_id": clientId,
+            "scope": OAuthConstants.scopeString
+        ]
+        let bodyString = bodyParams.map { "\($0.key)=\($0.value.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? $0.value)" }.joined(separator: "&")
+        request.httpBody = bodyString.data(using: .utf8)
+
+        print("📡 POST \(endpoint)")
+        print("   Scopes: \(OAuthConstants.scopeString)")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NSError(domain: "AuthManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Invalid response"])
+        }
+
+        print("   Response: \(httpResponse.statusCode)")
+
+        guard httpResponse.statusCode == 200 else {
+            // Try to parse error response
+            if let errorResponse = try? JSONDecoder().decode(OAuthErrorResponse.self, from: data) {
+                print("❌ OAuth error: \(errorResponse.error)")
+                if let description = errorResponse.errorDescription {
+                    print("   Description: \(description)")
+                }
+                throw NSError(domain: "AuthManager", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: errorResponse.errorDescription ?? errorResponse.error])
+            }
+            throw NSError(domain: "AuthManager", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: "Device code request failed"])
+        }
+
+        let deviceCodeResponse = try JSONDecoder().decode(DeviceCodeResponse.self, from: data)
+        print("✅ Device code received")
+        print("   User Code: \(deviceCodeResponse.userCode)")
+        print("   Verification URI: \(deviceCodeResponse.verificationUri)")
+        print("   Expires in: \(deviceCodeResponse.expiresIn)s")
+        print("   Polling interval: \(deviceCodeResponse.interval)s")
+
+        return deviceCodeResponse
+    }
+
+    /// Poll for device code completion - returns access and refresh tokens
+    func pollForDeviceCodeCompletion(deviceCode: String) async throws -> TokenResponse {
+        guard let clientId = self.clientId, let tenantId = self.tenantId else {
+            throw AuthError.missingConfiguration("Client ID or Tenant ID not configured")
+        }
+
+        print("🔄 Polling for device code completion...")
+
+        let endpoint = OAuthConstants.tokenEndpoint(tenantId: tenantId)
+        guard let url = URL(string: endpoint) else {
+            throw NSError(domain: "AuthManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "Invalid token endpoint"])
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+
+        let bodyParams = [
+            "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
+            "client_id": clientId,
+            "device_code": deviceCode
+        ]
+        let bodyString = bodyParams.map { "\($0.key)=\($0.value.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? $0.value)" }.joined(separator: "&")
+        request.httpBody = bodyString.data(using: .utf8)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NSError(domain: "AuthManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Invalid response"])
+        }
+
+        // Handle pending authorization (user hasn't completed auth yet)
+        if httpResponse.statusCode == 400 {
+            if let errorResponse = try? JSONDecoder().decode(OAuthErrorResponse.self, from: data) {
+                if errorResponse.error == "authorization_pending" {
+                    // This is expected - user hasn't completed auth yet
+                    throw NSError(domain: "AuthManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "authorization_pending"])
+                } else if errorResponse.error == "slow_down" {
+                    // Server wants us to slow down polling
+                    throw NSError(domain: "AuthManager", code: -2, userInfo: [NSLocalizedDescriptionKey: "slow_down"])
+                } else if errorResponse.error == "expired_token" {
+                    // Device code expired
+                    print("❌ Device code expired")
+                    throw NSError(domain: "AuthManager", code: 3, userInfo: [NSLocalizedDescriptionKey: "Device code expired. Please try again."])
+                } else {
+                    // Other error
+                    print("❌ OAuth error: \(errorResponse.error)")
+                    if let description = errorResponse.errorDescription {
+                        print("   Description: \(description)")
+                    }
+                    throw NSError(domain: "AuthManager", code: 4, userInfo: [NSLocalizedDescriptionKey: errorResponse.errorDescription ?? errorResponse.error])
+                }
+            }
+        }
+
+        guard httpResponse.statusCode == 200 else {
+            throw NSError(domain: "AuthManager", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: "Token request failed with status \(httpResponse.statusCode)"])
+        }
+
+        let tokenResponse = try JSONDecoder().decode(TokenResponse.self, from: data)
+        print("✅ Device code authentication successful!")
+        print("   Access token received (length: \(tokenResponse.accessToken.count))")
+        print("   Refresh token: \(tokenResponse.refreshToken != nil ? "received" : "NOT received")")
+        print("   Expires in: \(tokenResponse.expiresIn)s")
+
+        // Save tokens
+        let expiry = Date().addingTimeInterval(TimeInterval(tokenResponse.expiresIn))
+        _ = storageManager.saveAccessToken(tokenResponse.accessToken)
+        _ = storageManager.saveTokenExpiry(expiry)
+
+        if let refreshToken = tokenResponse.refreshToken {
+            _ = storageManager.saveRefreshToken(refreshToken)
+            print("✅ Refresh token saved to Keychain")
+        } else {
+            print("⚠️  No refresh token received - may need to re-authenticate frequently")
+        }
+
+        return tokenResponse
+    }
+
+    /// Refresh access token using stored refresh token
+    func refreshUsingRefreshToken() async throws -> String {
+        guard let clientId = self.clientId, let tenantId = self.tenantId else {
+            throw AuthError.missingConfiguration("Client ID or Tenant ID not configured")
+        }
+
+        guard let refreshToken = storageManager.loadRefreshToken() else {
+            print("❌ No refresh token available")
+            throw AuthError.sessionExpired
+        }
+
+        print("🔄 Refreshing access token using refresh token...")
+
+        let endpoint = OAuthConstants.tokenEndpoint(tenantId: tenantId)
+        guard let url = URL(string: endpoint) else {
+            throw NSError(domain: "AuthManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "Invalid token endpoint"])
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+
+        let bodyParams = [
+            "grant_type": "refresh_token",
+            "client_id": clientId,
+            "refresh_token": refreshToken,
+            "scope": OAuthConstants.scopeString
+        ]
+        let bodyString = bodyParams.map { "\($0.key)=\($0.value.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? $0.value)" }.joined(separator: "&")
+        request.httpBody = bodyString.data(using: .utf8)
+
+        print("📡 POST \(endpoint)")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NSError(domain: "AuthManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Invalid response"])
+        }
+
+        print("   Response: \(httpResponse.statusCode)")
+
+        guard httpResponse.statusCode == 200 else {
+            // Try to parse error response
+            if let errorResponse = try? JSONDecoder().decode(OAuthErrorResponse.self, from: data) {
+                print("❌ OAuth error: \(errorResponse.error)")
+                if let description = errorResponse.errorDescription {
+                    print("   Description: \(description)")
+                }
+
+                // If refresh token is invalid, clear it and throw session expired
+                if errorResponse.error == "invalid_grant" {
+                    print("   Refresh token is invalid - clearing stored token")
+                    _ = storageManager.saveRefreshToken("")  // Clear invalid token
+                    throw AuthError.sessionExpired
+                }
+
+                throw NSError(domain: "AuthManager", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: errorResponse.errorDescription ?? errorResponse.error])
+            }
+            throw NSError(domain: "AuthManager", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: "Token refresh failed"])
+        }
+
+        let tokenResponse = try JSONDecoder().decode(TokenResponse.self, from: data)
+        print("✅ Token refresh successful!")
+        print("   New access token received (length: \(tokenResponse.accessToken.count))")
+        print("   New refresh token: \(tokenResponse.refreshToken != nil ? "received (rotated)" : "NOT received")")
+        print("   Expires in: \(tokenResponse.expiresIn)s")
+
+        // Save new tokens (Microsoft rotates refresh tokens)
+        let expiry = Date().addingTimeInterval(TimeInterval(tokenResponse.expiresIn))
+        _ = storageManager.saveAccessToken(tokenResponse.accessToken)
+        _ = storageManager.saveTokenExpiry(expiry)
+
+        if let newRefreshToken = tokenResponse.refreshToken {
+            _ = storageManager.saveRefreshToken(newRefreshToken)
+            print("✅ New refresh token saved (old token is now invalid)")
+        }
+
+        return tokenResponse.accessToken
+    }
+
     // MARK: - Interactive Authentication
 
     func startInteractiveAuth(parentWindow: NSWindow? = nil) async throws -> String {
@@ -418,6 +650,21 @@ class AuthManager {
             throw AuthError.notInitialized
         }
 
+        // Try refresh token first (if available)
+        if storageManager.loadRefreshToken() != nil {
+            print("   💡 Refresh token available - using manual refresh")
+            do {
+                return try await refreshUsingRefreshToken()
+            } catch {
+                print("   ⚠️  Manual refresh failed: \(error.localizedDescription)")
+                print("   ⏩ Falling back to MSAL refresh...")
+                // Fall through to MSAL refresh
+            }
+        } else {
+            print("   ℹ️  No refresh token - using MSAL silent refresh")
+        }
+
+        // Fall back to MSAL silent refresh
         guard let application = msalApplication else {
             print("   ❌ MSAL application is nil!")
             throw NSError(domain: "AuthManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "MSAL not initialized"])
@@ -496,7 +743,11 @@ class AuthManager {
     // MARK: - Sign Out
 
     func signOut() {
+        print("🚪 Signing out...")
+
+        // Delete all tokens (access, refresh, expiry)
         storageManager.deleteAllTokens()
+        print("   ✅ Tokens cleared from Keychain")
 
         // Remove account from MSAL cache
         if let application = msalApplication {
@@ -504,10 +755,13 @@ class AuthManager {
                 let accounts = try application.allAccounts()
                 for account in accounts {
                     try application.remove(account)
+                    print("   ✅ Removed MSAL account: \(account.username ?? "unknown")")
                 }
             } catch {
-                print("Failed to remove accounts: \(error)")
+                print("   ⚠️  Failed to remove MSAL accounts: \(error)")
             }
         }
+
+        print("✅ Sign out complete")
     }
 }

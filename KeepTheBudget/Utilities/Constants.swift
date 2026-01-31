@@ -37,6 +37,37 @@ enum GraphConstants {
     ]
 }
 
+enum OAuthConstants {
+    /// Returns the OAuth authority URL for the given tenant
+    static func authorityURL(tenantId: String) -> String {
+        return "https://login.microsoftonline.com/\(tenantId)"
+    }
+
+    /// Device code initiation endpoint
+    static func deviceCodeEndpoint(tenantId: String) -> String {
+        return "\(authorityURL(tenantId: tenantId))/oauth2/v2.0/devicecode"
+    }
+
+    /// Token endpoint (for both device code polling and refresh token)
+    static func tokenEndpoint(tenantId: String) -> String {
+        return "\(authorityURL(tenantId: tenantId))/oauth2/v2.0/token"
+    }
+
+    /// Scopes for OAuth flow (includes offline_access for refresh tokens)
+    static let scopes = [
+        "Calendars.Read",
+        "User.Read",
+        "Mail.Read",
+        "Chat.Read",
+        "offline_access"  // Required to get refresh tokens
+    ]
+
+    /// Scope string formatted for OAuth requests
+    static var scopeString: String {
+        return scopes.joined(separator: " ")
+    }
+}
+
 enum KeychainKeys {
     static let accessToken = "office365_access_token"
     static let refreshToken = "office365_refresh_token"

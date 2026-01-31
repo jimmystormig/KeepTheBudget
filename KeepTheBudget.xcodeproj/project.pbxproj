@@ -40,6 +40,7 @@
 		8B0358FDE9C466E46FBFB0B5 /* ProgressBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DA4AE6328C89A1E343018CB /* ProgressBar.swift */; };
 		8EAA0021CD364E523712A6D3 /* EmailMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = C32841411508A952DC0A0734 /* EmailMessage.swift */; };
 		92DD5C716239449E077EA94A /* DateExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1383747AA25BD7758E826757 /* DateExtensions.swift */; };
+		9B6813CFE8F6E0DF7A663368 /* OAuthModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCCBEBB613F3C98EE570D2B2 /* OAuthModels.swift */; };
 		A6AC4E55078F0EB71DB44633 /* GraphAPIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50561898A92BAF8468562263 /* GraphAPIService.swift */; };
 		A80AC437FCBD76FFC98C01BA /* AppError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D9416ED900361823C79386E /* AppError.swift */; };
 		A8B5B519146B6BF67DC03969 /* ChatConversationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BA05B7BACFDF8EEF1BC603F /* ChatConversationView.swift */; };
@@ -105,6 +106,7 @@
 		D6ED6A319BD3A85EC9A13B02 /* AIReportAnalysis.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIReportAnalysis.swift; sourceTree = "<group>"; };
 		D77A0772F68DA0B8F140E757 /* WeeklyReportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklyReportView.swift; sourceTree = "<group>"; };
 		DC62CAC6A12B775938B3C078 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		DCCBEBB613F3C98EE570D2B2 /* OAuthModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OAuthModels.swift; sourceTree = "<group>"; };
 		DFFC086B012A7BE1B62A586C /* KeepTheBudget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = KeepTheBudget.entitlements; sourceTree = "<group>"; };
 		ED11956CC259F1EACC65545F /* TimeCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeCalculator.swift; sourceTree = "<group>"; };
 		EDE1B07EA810F7CE71EEA65A /* StringExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StringExtensions.swift; sourceTree = "<group>"; };
@@ -177,6 +179,7 @@
 				C32841411508A952DC0A0734 /* EmailMessage.swift */,
 				EEE37FA55A534D78ED5CEAD3 /* EmailThread.swift */,
 				58724CDBAD0134100021F978 /* GoalStatus.swift */,
+				DCCBEBB613F3C98EE570D2B2 /* OAuthModels.swift */,
 				1354440ECF2E2B57982B2C3B /* TimeReport.swift */,
 				1E017208212F7B5EEE618456 /* TimeSummary.swift */,
 				FD016D6D441D7E72C15FFC12 /* UserProfile.swift */,
@@ -359,6 +362,7 @@
 				872B68F77790FAD967A2A830 /* KeepTheBudgetApp.swift in Sources */,
 				033176AE831ACAD15F688398 /* KeychainHelper.swift in Sources */,
 				BFF44EEA20E43A351BB80660 /* MigrationManager.swift in Sources */,
+				9B6813CFE8F6E0DF7A663368 /* OAuthModels.swift in Sources */,
 				F6E5AF15FB3DEC8E6C47641E /* PopoverView.swift in Sources */,
 				8B0358FDE9C466E46FBFB0B5 /* ProgressBar.swift in Sources */,
 				04BF7319C10D5ACDF5B5ED32 /* ReportDataSource.swift in Sources */,
