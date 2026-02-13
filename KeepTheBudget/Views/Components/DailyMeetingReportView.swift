@@ -14,6 +14,10 @@ struct DailyMeetingReportView: View {
     let onGenerateReport: (Date, Date) async -> ComprehensiveReport?
     let aiAnalyzer: AIReportAnalyzer
     let storageManager: StorageManager
+    let initialReport: ComprehensiveReport?
+    let initialAIAnalysis: AIReportAnalysis?
+    let initialAIErrorMessage: String?
+    let autoRunAIOnAppear: Bool
     let onClose: () -> Void
 
     @State private var startDate: Date
@@ -34,6 +38,7 @@ struct DailyMeetingReportView: View {
     @State private var aiAnalysis: AIReportAnalysis?
     @State private var isAnalyzingAI = false
     @State private var aiErrorMessage: String?
+    @State private var didRunAutoAIOnAppear = false
 
     init(
         defaultStartDate: Date,
@@ -41,6 +46,10 @@ struct DailyMeetingReportView: View {
         onGenerateReport: @escaping (Date, Date) async -> ComprehensiveReport?,
         aiAnalyzer: AIReportAnalyzer,
         storageManager: StorageManager,
+        initialReport: ComprehensiveReport? = nil,
+        initialAIAnalysis: AIReportAnalysis? = nil,
+        initialAIErrorMessage: String? = nil,
+        autoRunAIOnAppear: Bool = false,
         onClose: @escaping () -> Void
     ) {
         self.defaultStartDate = defaultStartDate
@@ -48,6 +57,10 @@ struct DailyMeetingReportView: View {
         self.onGenerateReport = onGenerateReport
         self.aiAnalyzer = aiAnalyzer
         self.storageManager = storageManager
+        self.initialReport = initialReport
+        self.initialAIAnalysis = initialAIAnalysis
+        self.initialAIErrorMessage = initialAIErrorMessage
+        self.autoRunAIOnAppear = autoRunAIOnAppear
         self.onClose = onClose
         self._startDate = State(initialValue: defaultStartDate)
         self._endDate = State(initialValue: defaultEndDate)
@@ -88,7 +101,7 @@ struct DailyMeetingReportView: View {
         }
         .frame(width: 600, height: 750)
         .onAppear {
-            generateReportForCurrentDates()
+            initializeOnAppear()
         }
     }
 
@@ -424,6 +437,32 @@ struct DailyMeetingReportView: View {
 
     // MARK: - Helper Methods
 
+    private func initializeOnAppear() {
+        if let initialReport = initialReport {
+            report = initialReport
+            errorMessage = nil
+            isGenerating = false
+
+            expandedFirstLevel = Set(initialReport.timeReport.firstLevelGroups.map { $0.id })
+            expandedEmailThreads = Set(initialReport.emailThreads.prefix(5).map { $0.id })
+            if let chats = initialReport.chatConversations {
+                expandedChats = Set(chats.prefix(5).map { $0.id })
+            }
+
+            aiAnalysis = initialAIAnalysis
+            aiErrorMessage = initialAIErrorMessage
+            showAISection = initialAIAnalysis != nil || initialAIErrorMessage != nil || autoRunAIOnAppear
+
+            if autoRunAIOnAppear && initialAIAnalysis == nil && !didRunAutoAIOnAppear {
+                didRunAutoAIOnAppear = true
+                runAIAnalysisForCurrentReport()
+            }
+            return
+        }
+
+        generateReportForCurrentDates()
+    }
+
     private func generateReportForCurrentDates() {
         print("🔄 DailyMeetingReportView: generateReportForCurrentDates() called")
         print("   Start: \(startDate)")
@@ -462,6 +501,34 @@ struct DailyMeetingReportView: View {
 
             isGenerating = false
             print("   🏁 Generation complete")
+        }
+    }
+
+    private func runAIAnalysisForCurrentReport() {
+        guard let report = report else { return }
+        let reportText = report.toText()
+        guard !reportText.isEmpty else {
+            aiErrorMessage = "No report data to analyze"
+            return
+        }
+
+        isAnalyzingAI = true
+        aiErrorMessage = nil
+        aiAnalysis = nil
+
+        Task {
+            do {
+                let result = try await aiAnalyzer.analyzeReport(reportText)
+                await MainActor.run {
+                    aiAnalysis = result
+                    isAnalyzingAI = false
+                }
+            } catch {
+                await MainActor.run {
+                    aiErrorMessage = error.localizedDescription
+                    isAnalyzingAI = false
+                }
+            }
         }
     }
 

@@ -53,6 +53,7 @@
 		CD96FEC73827B0C3B861C343 /* CategoryBreakdownView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B5D478ABC4756F226EC78BB /* CategoryBreakdownView.swift */; };
 		CE05C040BC57A2035E4026AD /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7445CF9B4EE2A4B45188FA7C /* AuthManager.swift */; };
 		CFAD6B6CE7290DFD62584E73 /* StorageManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9901D724A1A3385066F009D /* StorageManager.swift */; };
+		DC47EF6E343931B751D60116 /* DailyReportScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = D492F022375B2A22D6971BBE /* DailyReportScheduler.swift */; };
 		E1B1D7BBB3109B0111CD0744 /* DeviceCodeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A3E89C4A69442E291ED2AE6 /* DeviceCodeView.swift */; };
 		E8CF57324C91F62C01E4AFB1 /* AISettingsTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 085A5CAEC753805A214966AC /* AISettingsTab.swift */; };
 		E908558AB808F94A97B0CEA7 /* UserProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD016D6D441D7E72C15FFC12 /* UserProfile.swift */; };
@@ -103,6 +104,7 @@
 		D1617DCA2B3B8CF9D3ECE752 /* AzureOpenAIConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AzureOpenAIConfiguration.swift; sourceTree = "<group>"; };
 		D17C1653452895D4161EA6C8 /* CalendarEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarEvent.swift; sourceTree = "<group>"; };
 		D226D2AC79DE3DF9020C6526 /* CategorySummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategorySummary.swift; sourceTree = "<group>"; };
+		D492F022375B2A22D6971BBE /* DailyReportScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyReportScheduler.swift; sourceTree = "<group>"; };
 		D6ED6A319BD3A85EC9A13B02 /* AIReportAnalysis.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIReportAnalysis.swift; sourceTree = "<group>"; };
 		D77A0772F68DA0B8F140E757 /* WeeklyReportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklyReportView.swift; sourceTree = "<group>"; };
 		DC62CAC6A12B775938B3C078 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -222,6 +224,7 @@
 				773D41D15E11D3A849CAD0C5 /* AIReportAnalyzer.swift */,
 				7445CF9B4EE2A4B45188FA7C /* AuthManager.swift */,
 				B9BC61D2596024D92B13BCE1 /* ChatDataSource.swift */,
+				D492F022375B2A22D6971BBE /* DailyReportScheduler.swift */,
 				2EC14441521EA9E39696A5E8 /* EmailDataSource.swift */,
 				50561898A92BAF8468562263 /* GraphAPIService.swift */,
 				509B2931DCB6A3DE9834BFA0 /* ReportDataSource.swift */,
@@ -351,6 +354,7 @@
 				B85E3916537D75C7AE4E8A6D /* ConfigurationValidator.swift in Sources */,
 				01E97FD25A6920582D08680F /* Constants.swift in Sources */,
 				C04017B13A9E9946DEA1884F /* DailyMeetingReportView.swift in Sources */,
+				DC47EF6E343931B751D60116 /* DailyReportScheduler.swift in Sources */,
 				92DD5C716239449E077EA94A /* DateExtensions.swift in Sources */,
 				E1B1D7BBB3109B0111CD0744 /* DeviceCodeView.swift in Sources */,
 				8A7B4DBEF60E6B6557528AC2 /* EmailDataSource.swift in Sources */,

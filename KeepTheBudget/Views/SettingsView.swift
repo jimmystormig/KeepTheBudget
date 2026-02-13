@@ -194,6 +194,52 @@ struct GoalsTab: View {
 
                 Divider()
 
+                // Auto Daily Report Section
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Auto Daily Meeting Report")
+                        .font(.headline)
+
+                    Toggle("Enable automatic daily report", isOn: $preferences.autoDailyReportEnabled)
+                        .toggleStyle(.switch)
+
+                    if preferences.autoDailyReportEnabled {
+                        HStack {
+                            Text("Run at:")
+
+                            Stepper(value: $preferences.autoDailyReportHour, in: 0...23) {
+                                HStack(spacing: 4) {
+                                    TextField("", value: $preferences.autoDailyReportHour, format: .number)
+                                        .frame(width: 36)
+                                    Text("h")
+                                }
+                            }
+
+                            Stepper(value: $preferences.autoDailyReportMinute, in: 0...59) {
+                                HStack(spacing: 4) {
+                                    TextField("", value: $preferences.autoDailyReportMinute, format: .number)
+                                        .frame(width: 36)
+                                    Text("m")
+                                }
+                            }
+
+                            Text("(24-hour)")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+
+                        Toggle("Weekdays only (Mon-Fri)", isOn: $preferences.autoDailyReportWeekdaysOnly)
+                            .toggleStyle(.switch)
+
+                        Toggle("Include AI analysis", isOn: $preferences.autoDailyReportIncludeAI)
+                            .toggleStyle(.switch)
+
+                        Toggle("Auto-open report window", isOn: $preferences.autoDailyReportAutoOpenWindow)
+                            .toggleStyle(.switch)
+                    }
+                }
+
+                Divider()
+
                 // Category Filtering Section
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Category-Based Goal Filtering")
