@@ -49,38 +49,29 @@ class AIReportAnalyzer {
         print("📝 Report sanitized: \(text.count) → \(sanitizedText.count) characters")
 
         // 5. Build prompt
-        let systemPrompt = "You are a helpful assistant that analyzes comprehensive work reports including calendar events, emails, and Teams chats. Identify correlations, priorities, and actionable insights."
+        let systemPrompt = "You are a concise assistant that summarizes work activity for daily standups. Be extremely brief — bullet points only, no fluff."
         let userPrompt = """
-        Analyze this comprehensive work report and provide:
-        1. A brief summary (1-2 sentences) of the overall activity
-        2. 3-5 key highlights or insights
-        3. Correlations: Identify connections between calendar events, emails, and chats (e.g., meetings followed by email discussions, chat conversations about scheduled events)
-        4. Priorities: Identify high-priority items requiring attention based on urgency, importance, or follow-up needs
+        Summarize this work report for a daily standup meeting. Be extremely concise.
 
         Report:
         \(sanitizedText)
 
         Respond in JSON format:
         {
-            "summary": "...",
-            "highlights": ["...", "...", "..."],
-            "correlations": [
-                {
-                    "type": "eventToEmail | eventToChat | emailToChat | multiChannel",
-                    "title": "Brief title",
-                    "description": "What's connected and why it matters",
-                    "items": ["Reference to specific event/email/chat"]
-                }
-            ],
-            "priorities": [
-                {
-                    "level": "high | medium | low",
-                    "title": "What needs attention",
-                    "reason": "Why it's a priority",
-                    "relatedItems": ["References to related events/emails/chats"]
-                }
-            ]
+            "summary": "One sentence: what was the main focus",
+            "highlights": ["Max 3 bullet points of the most important items only"],
+            "correlations": [],
+            "priorities": [{"level": "high", "title": "...", "reason": "...", "relatedItems": []}]
         }
+
+        Rules:
+        - Summary: ONE sentence max. Mention time spent on major areas (e.g. "3h on X, 2h on Y")
+        - Highlights: 2-3 items max, each under 15 words
+        - Separate customer work (e.g. Dekra, external clients) from internal work (Nexer, admin, internal meetings). Lead with customer work
+        - Note if unusually high communication activity occurred (many emails/chats on a topic)
+        - Priorities: Only include if something genuinely urgent exists, otherwise empty array
+        - Skip anything routine or low-importance
+        - Respond in the same language as the report content
         """
 
         let requestBody: [String: Any] = [
@@ -88,7 +79,7 @@ class AIReportAnalyzer {
                 ["role": "system", "content": systemPrompt],
                 ["role": "user", "content": userPrompt]
             ],
-            "max_completion_tokens": 2000,  // Higher limit for reasoning models (gpt-5.2 uses reasoning tokens)
+            "max_completion_tokens": 800,  // Concise standup output needs fewer tokens
             "temperature": 0.3
         ]
 
@@ -154,18 +145,28 @@ class AIReportAnalyzer {
         print("✅ Received AI response")
         print("   Full content: \(content)")
 
-        // 9. Parse JSON from content (handle markdown-wrapped JSON)
+        // 9. Parse JSON from content (handle markdown-wrapped or text-wrapped JSON)
         var jsonContent = content
 
-        // Remove markdown code block if present (```json ... ``` or ``` ... ```)
+        // Strategy 1: Remove markdown code block if present (```json ... ``` or ``` ... ```)
         if jsonContent.contains("```") {
-            // Extract content between ```json and ``` or between ``` and ```
             let pattern = "```(?:json)?\\s*([\\s\\S]*?)```"
             if let regex = try? NSRegularExpression(pattern: pattern, options: []),
                let match = regex.firstMatch(in: jsonContent, options: [], range: NSRange(jsonContent.startIndex..., in: jsonContent)),
                let range = Range(match.range(at: 1), in: jsonContent) {
                 jsonContent = String(jsonContent[range])
                 print("   📋 Extracted JSON from markdown code block")
+            }
+        }
+
+        jsonContent = jsonContent.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Strategy 2: If not valid JSON yet, find the outermost { ... } in the content
+        if jsonContent.data(using: .utf8).flatMap({ try? JSONSerialization.jsonObject(with: $0) }) == nil {
+            if let firstBrace = jsonContent.firstIndex(of: "{"),
+               let lastBrace = jsonContent.lastIndex(of: "}") {
+                jsonContent = String(jsonContent[firstBrace...lastBrace])
+                print("   📋 Extracted JSON by finding outermost braces")
             }
         }
 
