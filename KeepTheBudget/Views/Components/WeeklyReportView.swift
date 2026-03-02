@@ -312,11 +312,14 @@ struct SecondLevelGroupView: View {
 
             // Descriptions as bullet points
             if !group.descriptions.isEmpty {
-                let combinedDescriptions = group.descriptions.joined(separator: ", ")
-                Text("• \(combinedDescriptions)")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .padding(.leading, 12)
+                VStack(alignment: .leading, spacing: 2) {
+                    ForEach(group.descriptions, id: \.self) { description in
+                        Text("• \(description)")
+                            .font(.body)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .padding(.leading, 12)
             }
         }
     }

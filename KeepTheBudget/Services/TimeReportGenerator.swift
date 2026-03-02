@@ -48,7 +48,9 @@ class TimeReportGenerator {
 
             for (secondLevelName, items) in secondLevelDict {
                 let totalMinutes = items.reduce(0) { $0 + $1.minutes }
-                let allDescriptions = items.flatMap { $0.descriptions }
+                let allDescriptions = items.flatMap { $0.descriptions }.reduce(into: [String]()) { result, desc in
+                    if !result.contains(desc) { result.append(desc) }
+                }
                 secondLevelTotals.append((secondLevelName, totalMinutes, allDescriptions))
             }
 
