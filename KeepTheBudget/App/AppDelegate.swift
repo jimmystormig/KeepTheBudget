@@ -70,12 +70,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         print("🔑 Loading keychain configuration snapshot...")
         let configSnapshot = storageManager.loadConfigurationSnapshot()
 
-        // Auto-migrate existing users using the snapshot
-        MigrationManager.migrateConfigurationIfNeeded(
-            storageManager: storageManager,
-            snapshot: configSnapshot
-        )
-
         // Check configuration status FIRST
         Task {
             await checkConfigurationAndInitialize(configSnapshot: configSnapshot)

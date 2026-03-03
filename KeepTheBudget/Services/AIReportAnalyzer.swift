@@ -67,7 +67,7 @@ class AIReportAnalyzer {
         Rules:
         - Summary: ONE sentence max. Mention time spent on major areas (e.g. "3h on X, 2h on Y")
         - Highlights: 2-3 items max, each under 15 words
-        - Separate customer work (e.g. Dekra, external clients) from internal work (Nexer, admin, internal meetings). Lead with customer work
+        - Separate customer work (external clients) from internal work (admin, internal meetings). Lead with customer work
         - Note if unusually high communication activity occurred (many emails/chats on a topic)
         - Priorities: Only include if something genuinely urgent exists, otherwise empty array
         - Skip anything routine or low-importance

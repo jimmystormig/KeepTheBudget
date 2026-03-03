@@ -30,7 +30,8 @@ KeepTheBudget is a native macOS menu bar application that helps you track your s
 
 1. Clone the repository:
    ```bash
-   cd /Users/jimmy/Src/Nexer/KeepTheBudget
+   git clone https://github.com/jimmystormig/KeepTheBudget.git
+   cd KeepTheBudget
    ```
 
 2. Open the project in Xcode:
@@ -282,13 +283,12 @@ For personal use only (current Mac):
 
 ## Support
 
-For issues, questions, or feature requests, please contact:
-- Email: support@nexer.com
-- GitHub: [Create an issue](https://github.com/nexer/KeepTheBudget/issues)
+For issues, questions, or feature requests:
+- [Create an issue](https://github.com/jimmystormig/KeepTheBudget/issues)
 
 ## License
 
-Copyright © 2026 Nexer. All rights reserved.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Credits
 

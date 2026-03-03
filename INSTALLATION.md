@@ -100,7 +100,7 @@ To update KeepTheBudget to a newer version:
 
 ### Step 1: Build the new version
 ```bash
-cd /Users/jimmy/Src/Nexer/KeepTheBudget
+cd KeepTheBudget
 xcodebuild -project KeepTheBudget.xcodeproj -scheme KeepTheBudget -configuration Release clean build
 ```
 
@@ -178,7 +178,7 @@ To remove KeepTheBudget:
 4. **Remove preferences** (optional)
    ```bash
    # Remove stored preferences
-   defaults delete com.nexer.KeepTheBudget
+   defaults delete com.keepthebudget.KeepTheBudget
 
    # Remove keychain items (will prompt for password)
    # Open Keychain Access app and search for "office365" to delete tokens
@@ -193,13 +193,13 @@ To remove KeepTheBudget:
 
 ### Source Code
 ```
-/Users/jimmy/Src/Nexer/KeepTheBudget/
+(your local clone directory)
 ```
 
 ### Preferences
 Stored in macOS UserDefaults:
 ```
-~/Library/Preferences/com.nexer.KeepTheBudget.plist
+~/Library/Preferences/com.keepthebudget.KeepTheBudget.plist
 ```
 
 ### Tokens (Secure)

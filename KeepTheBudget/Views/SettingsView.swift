@@ -656,7 +656,7 @@ struct AboutTab: View {
             Divider()
                 .padding(.horizontal, 40)
 
-            Text("© 2026 Nexer")
+            Text("© 2026 KeepTheBudget contributors")
                 .font(.caption)
                 .foregroundColor(.secondary)
 

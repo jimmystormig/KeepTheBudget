@@ -48,7 +48,6 @@
 		B0B19536F5B0FF481D6BBFCD /* ComprehensiveReport.swift in Sources */ = {isa = PBXBuildFile; fileRef = A47A7B0E8D5722C1894A666E /* ComprehensiveReport.swift */; };
 		B82ED28B9984021E0E4B806E /* TimeFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB50E29B2BCB400E5357843C /* TimeFormatter.swift */; };
 		B85E3916537D75C7AE4E8A6D /* ConfigurationValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82418F7BD84E475D95CFB3AF /* ConfigurationValidator.swift */; };
-		BFF44EEA20E43A351BB80660 /* MigrationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1DB12B64501C290A091B1C3 /* MigrationManager.swift */; };
 		C04017B13A9E9946DEA1884F /* DailyMeetingReportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29BDB7D26083D5D63463FFF1 /* DailyMeetingReportView.swift */; };
 		CD96FEC73827B0C3B861C343 /* CategoryBreakdownView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B5D478ABC4756F226EC78BB /* CategoryBreakdownView.swift */; };
 		CE05C040BC57A2035E4026AD /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7445CF9B4EE2A4B45188FA7C /* AuthManager.swift */; };
@@ -92,7 +91,6 @@
 		92F70D5B53AD791D30B96F62 /* ChatConversation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatConversation.swift; sourceTree = "<group>"; };
 		9A3E89C4A69442E291ED2AE6 /* DeviceCodeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceCodeView.swift; sourceTree = "<group>"; };
 		9BA05B7BACFDF8EEF1BC603F /* ChatConversationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatConversationView.swift; sourceTree = "<group>"; };
-		A1DB12B64501C290A091B1C3 /* MigrationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MigrationManager.swift; sourceTree = "<group>"; };
 		A47A7B0E8D5722C1894A666E /* ComprehensiveReport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComprehensiveReport.swift; sourceTree = "<group>"; };
 		A4C1F1097A13C6A2019720B2 /* EmailThreadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmailThreadView.swift; sourceTree = "<group>"; };
 		A9901D724A1A3385066F009D /* StorageManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageManager.swift; sourceTree = "<group>"; };
@@ -243,7 +241,6 @@
 				FFA54EC4D4D3C73AEFF0ECFD /* Constants.swift */,
 				1383747AA25BD7758E826757 /* DateExtensions.swift */,
 				5FE52DDBA411B0FA5AF32122 /* KeychainHelper.swift */,
-				A1DB12B64501C290A091B1C3 /* MigrationManager.swift */,
 				EDE1B07EA810F7CE71EEA65A /* StringExtensions.swift */,
 				CB50E29B2BCB400E5357843C /* TimeFormatter.swift */,
 				66AAE59D94367A2087AF7502 /* WorkdayCalculator.swift */,
@@ -365,7 +362,6 @@
 				A6AC4E55078F0EB71DB44633 /* GraphAPIService.swift in Sources */,
 				872B68F77790FAD967A2A830 /* KeepTheBudgetApp.swift in Sources */,
 				033176AE831ACAD15F688398 /* KeychainHelper.swift in Sources */,
-				BFF44EEA20E43A351BB80660 /* MigrationManager.swift in Sources */,
 				9B6813CFE8F6E0DF7A663368 /* OAuthModels.swift in Sources */,
 				F6E5AF15FB3DEC8E6C47641E /* PopoverView.swift in Sources */,
 				8B0358FDE9C466E46FBFB0B5 /* ProgressBar.swift in Sources */,
@@ -459,7 +455,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.nexer.KeepTheBudget;
+				PRODUCT_BUNDLE_IDENTIFIER = com.keepthebudget.KeepTheBudget;
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.9;
@@ -544,7 +540,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.nexer.KeepTheBudget;
+				PRODUCT_BUNDLE_IDENTIFIER = com.keepthebudget.KeepTheBudget;
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.9;

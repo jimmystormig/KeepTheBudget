@@ -26,8 +26,7 @@ This file is the agent-facing working guide for `KeepTheBudget`. It consolidates
 ## 3) Launch and Data Flow
 
 1. App starts and loads a keychain configuration snapshot once.
-2. Migration runs (`MigrationManager`) for legacy users.
-3. If no Client ID/Tenant ID: show configuration setup window.
+2. If no Client ID/Tenant ID: show configuration setup window.
 4. `AuthManager.initialize(clientId:tenantId:)` runs after config exists.
 5. If no valid tokens: show device code auth flow.
 6. If no selected calendar: show calendar selection.

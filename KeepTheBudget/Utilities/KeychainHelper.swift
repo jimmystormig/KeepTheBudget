@@ -29,7 +29,7 @@ class KeychainHelper {
     private let configBundleKey = "configuration_bundle"
 
     private init() {
-        self.service = Bundle.main.bundleIdentifier ?? "com.nexer.KeepTheBudget"
+        self.service = Bundle.main.bundleIdentifier ?? "com.keepthebudget.KeepTheBudget"
     }
 
     func save(_ data: Data, forKey key: String) -> Bool {

@@ -66,7 +66,6 @@ The app uses a clean service-oriented architecture with clear separation of conc
 
 **Utilities** (`Utilities/`)
 - `ConfigurationValidator`: UUID format validation for Client ID and Tenant ID
-- `MigrationManager`: Auto-migration from hardcoded credentials to Keychain
 - `KeychainHelper`: Secure credential storage wrapper
 - `TimeFormatter`: Time formatting utilities
 
@@ -86,7 +85,7 @@ The app uses a clean service-oriented architecture with clear separation of conc
 
 ### Data Flow
 
-1. **Configuration Check**: App launch → `MigrationManager` auto-migrates existing users → Check Keychain for Client ID/Tenant ID
+1. **Configuration Check**: App launch → Check Keychain for Client ID/Tenant ID
 2. **Lazy Initialization**: `AuthManager.initialize()` called after config verified → Loads credentials from Keychain → Initializes MSAL
 3. **Authentication**: Device code flow → User enters code at microsoft.com/devicelogin → Access + refresh tokens saved to Keychain
 4. **Calendar Selection**: `GraphAPIService` fetches calendars → User selects → ID saved to UserDefaults
@@ -273,12 +272,6 @@ Graph API returns max 100 events per page. `GraphAPIService.fetchEvents()` handl
 4. Saved to Keychain
 5. `AuthManager.initialize()` called to load credentials and setup MSAL
 
-**Existing User Migration**:
-- `MigrationManager.migrateConfigurationIfNeeded()` runs on app launch
-- Detects existing users by checking for saved tokens
-- Auto-migrates legacy hardcoded values to Keychain (one-time only)
-- See `MigrationManager.swift` for hardcoded legacy values used during migration
-
 **Reconfiguration**:
 - Settings → Configuration tab allows viewing/changing credentials
 - Changes require sign-out and app restart
@@ -364,7 +357,7 @@ security delete-generic-password -s "office365_access_token" 2>/dev/null
 security delete-generic-password -s "office365_refresh_token" 2>/dev/null
 security delete-generic-password -s "msal_client_id" 2>/dev/null
 security delete-generic-password -s "msal_tenant_id" 2>/dev/null
-defaults delete com.nexer.KeepTheBudget
+defaults delete com.keepthebudget.KeepTheBudget
 ```
 
 **Tokens only** (keep config):

@@ -5,7 +5,7 @@ Get started with KeepTheBudget in 3 simple steps!
 ## Step 1: Build the App
 
 ```bash
-cd /Users/jimmy/Src/Nexer/KeepTheBudget
+cd KeepTheBudget
 xcodebuild -project KeepTheBudget.xcodeproj -scheme KeepTheBudget -configuration Debug build
 ```
 

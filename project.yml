@@ -1,6 +1,6 @@
 name: KeepTheBudget
 options:
-  bundleIdPrefix: com.nexer
+  bundleIdPrefix: com.keepthebudget
   deploymentTarget:
     macOS: "12.0"
   developmentLanguage: en
@@ -21,7 +21,7 @@ targets:
       - KeepTheBudget
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.nexer.KeepTheBudget
+        PRODUCT_BUNDLE_IDENTIFIER: com.keepthebudget.KeepTheBudget
         INFOPLIST_FILE: KeepTheBudget/App/Info.plist
         CODE_SIGN_ENTITLEMENTS: KeepTheBudget/App/KeepTheBudget.entitlements
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
