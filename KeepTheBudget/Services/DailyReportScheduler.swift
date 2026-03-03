@@ -23,13 +23,11 @@ class DailyReportScheduler {
         stop()
         reloadPreferences()
 
-        timer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+        let newTimer = Timer(timeInterval: 30, repeats: true) { [weak self] _ in
             self?.evaluateSchedule()
         }
-
-        if let timer = timer {
-            RunLoop.main.add(timer, forMode: .common)
-        }
+        RunLoop.main.add(newTimer, forMode: .common)
+        timer = newTimer
 
         evaluateSchedule()
         print("Daily report scheduler started (\(preferences.autoDailyReportHour):\(String(format: "%02d", preferences.autoDailyReportMinute)))")
