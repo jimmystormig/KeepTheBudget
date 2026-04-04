@@ -26,12 +26,16 @@ struct DailyMeetingReportView: View {
     @State private var expandedFirstLevel: Set<UUID> = []
     @State private var expandedEmailThreads: Set<String> = []
     @State private var expandedChats: Set<String> = []
+    @State private var showYesterdaySection = true
     @State private var showCalendarSection = true
-    @State private var showEmailSection = true
-    @State private var showChatSection = true
+    @State private var showEmailSection = false
+    @State private var showChatSection = false
+    @State private var showTodaySection = true
+    @State private var showTodayCalendarSection = false
+    @State private var showTodayEmailSection = false
+    @State private var showTodayChatSection = false
     @State private var copiedToClipboard = false
     @State private var isGenerating = false
-    @State private var showAISection = false
     @State private var errorMessage: String?
 
     // AI Analysis state (lifted up to persist across collapse/expand)
@@ -84,14 +88,6 @@ struct DailyMeetingReportView: View {
                 reportContentView(report)
             } else {
                 emptyStateView
-            }
-
-            Divider()
-
-            // AI Analysis section (collapsible)
-            if report != nil {
-                aiAnalysisSection
-                Divider()
             }
 
             // Footer with Copy and Close buttons
@@ -153,15 +149,10 @@ struct DailyMeetingReportView: View {
                 // Header
                 reportHeaderView(comprehensiveReport.timeReport)
 
-                // Calendar Events Section
-                calendarEventsSection(comprehensiveReport.timeReport)
+                historicalWorkSection(comprehensiveReport)
 
-                // Email Threads Section
-                emailThreadsSection(comprehensiveReport.emailThreads)
-
-                // Teams Chats Section
-                if let chats = comprehensiveReport.chatConversations {
-                    chatConversationsSection(chats)
+                if let remainingDayPlan = comprehensiveReport.remainingDayPlan {
+                    remainingDaySection(remainingDayPlan)
                 }
             }
             .padding()
@@ -233,6 +224,44 @@ struct DailyMeetingReportView: View {
                             }
                         )
                     }
+                }
+            }
+        }
+        .padding()
+        .background(Color(NSColor.windowBackgroundColor))
+        .cornerRadius(8)
+    }
+
+    private func historicalWorkSection(_ report: ComprehensiveReport) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Button(action: { showYesterdaySection.toggle() }) {
+                HStack {
+                    Image(systemName: showYesterdaySection ? "chevron.down" : "chevron.right")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .frame(width: 12)
+
+                    Image(systemName: "clock.arrow.circlepath")
+                        .foregroundColor(.orange)
+                    Text("Yesterday's Work")
+                        .font(.headline)
+                    Spacer()
+                    Text(TimeFormatter.format(minutes: report.timeReport.totalMinutes))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(PlainButtonStyle())
+
+            if showYesterdaySection {
+                Divider()
+                inlineYesterdayAISection()
+                calendarEventsSection(report.timeReport)
+                emailThreadsSection(report.emailThreads)
+
+                if let chats = report.chatConversations {
+                    chatConversationsSection(chats)
                 }
             }
         }
@@ -345,37 +374,236 @@ struct DailyMeetingReportView: View {
         .cornerRadius(8)
     }
 
-    // MARK: - AI Analysis Section
-
-    private var aiAnalysisSection: some View {
-        DisclosureGroup(
-            isExpanded: $showAISection,
-            content: {
-                if let report = report {
-                    AIAnalysisView(
-                        reportText: report.toText(),
-                        analyzer: aiAnalyzer,
-                        storageManager: storageManager,
-                        analysis: $aiAnalysis,
-                        isAnalyzing: $isAnalyzingAI,
-                        errorMessage: $aiErrorMessage
-                    )
-                    .padding(.top, 8)
-                }
-            },
-            label: {
+    private func remainingDaySection(_ plan: RemainingDayPlan) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Button(action: { showTodaySection.toggle() }) {
                 HStack {
-                    Image(systemName: "sparkles")
-                        .foregroundColor(.blue)
-                    Text("AI Analysis")
+                    Image(systemName: showTodaySection ? "chevron.down" : "chevron.right")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .frame(width: 12)
+
+                    Image(systemName: "checkmark.circle")
+                        .foregroundColor(.green)
+                    Text("What To Do Today")
                         .font(.headline)
+                    Spacer()
+                    Text("\(plan.upcomingEvents.count + plan.unreadEmailThreads.count + plan.unreadChatConversations.count) buckets")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
-                .padding(.vertical, 8)
+                .contentShape(Rectangle())
             }
-        )
-        .padding(.horizontal)
-        .padding(.vertical, 8)
+            .buttonStyle(PlainButtonStyle())
+
+            if showTodaySection {
+                Divider()
+
+                VStack(alignment: .leading, spacing: 16) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("From \(formatTimestamp(plan.generatedAt)) to \(formatTimestamp(plan.endOfDay))")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+
+                        inlineTodayAISection()
+                    }
+
+                    todayCalendarSection(plan.upcomingEvents)
+                    todayUnreadEmailSection(plan.unreadEmailThreads)
+                    todayUnreadChatSection(plan.unreadChatConversations)
+                }
+            }
+        }
+        .padding()
         .background(Color(NSColor.windowBackgroundColor))
+        .cornerRadius(8)
+    }
+
+    private func todayCalendarSection(_ events: [CalendarEvent]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Button(action: { showTodayCalendarSection.toggle() }) {
+                HStack {
+                    Image(systemName: showTodayCalendarSection ? "chevron.down" : "chevron.right")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .frame(width: 12)
+                    Label("Upcoming Calendar Events", systemImage: "calendar")
+                        .font(.headline)
+                    Spacer()
+                    if !events.isEmpty {
+                        Text("\(events.count) events")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(PlainButtonStyle())
+
+            if showTodayCalendarSection {
+                if events.isEmpty {
+                    Text("No remaining calendar events today")
+                        .foregroundColor(.secondary)
+                } else {
+                    ForEach(events, id: \.id) { event in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(event.subject)
+                                .fontWeight(.medium)
+                            Text(formatEventTimeRange(event))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.vertical, 4)
+                    }
+                }
+            }
+        }
+    }
+
+    private func todayUnreadEmailSection(_ threads: [EmailThread]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Button(action: { showTodayEmailSection.toggle() }) {
+                HStack {
+                    Image(systemName: showTodayEmailSection ? "chevron.down" : "chevron.right")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .frame(width: 12)
+                    Label("Unread Email", systemImage: "envelope.fill")
+                        .font(.headline)
+                    Spacer()
+                    if !threads.isEmpty {
+                        Text("\(threads.count) threads")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(PlainButtonStyle())
+
+            if showTodayEmailSection {
+                if threads.isEmpty {
+                    Text("No unread email")
+                        .foregroundColor(.secondary)
+                } else {
+                    ForEach(threads) { thread in
+                        EmailThreadView(
+                            thread: thread,
+                            isExpanded: expandedEmailThreads.contains(thread.id),
+                            onToggle: { toggleEmailThread(thread.id) }
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private func todayUnreadChatSection(_ conversations: [ChatConversation]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Button(action: { showTodayChatSection.toggle() }) {
+                HStack {
+                    Image(systemName: showTodayChatSection ? "chevron.down" : "chevron.right")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .frame(width: 12)
+                    Label("Unread Teams Messages", systemImage: "message.fill")
+                        .font(.headline)
+                    Spacer()
+                    if !conversations.isEmpty {
+                        Text("\(conversations.count) conversations")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(PlainButtonStyle())
+
+            if showTodayChatSection {
+                if conversations.isEmpty {
+                    Text("No unread Teams messages")
+                        .foregroundColor(.secondary)
+                } else {
+                    ForEach(conversations) { conversation in
+                        ChatConversationView(
+                            conversation: conversation,
+                            isExpanded: expandedChats.contains(conversation.id),
+                            onToggle: { toggleChat(conversation.id) }
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private func inlineYesterdayAISection() -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("AI Summary")
+                .font(.headline)
+
+            if isAnalyzingAI {
+                aiLoadingView
+            } else if let aiAnalysis = aiAnalysis {
+                if !aiAnalysis.yesterdayWork.isEmpty {
+                    aiBulletSection("Yesterday's Work", aiAnalysis.yesterdayWork)
+                }
+            } else if let aiErrorMessage {
+                aiErrorView(aiErrorMessage)
+            }
+        }
+    }
+
+    private func inlineTodayAISection() -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("AI Summary")
+                .font(.headline)
+
+            if isAnalyzingAI {
+                aiLoadingView
+            } else if let aiAnalysis = aiAnalysis {
+                if !aiAnalysis.todayWork.isEmpty {
+                    aiBulletSection("What To Do Today", aiAnalysis.todayWork)
+                }
+            } else if let aiErrorMessage {
+                aiErrorView(aiErrorMessage)
+            }
+        }
+    }
+
+    private func aiBulletSection(_ title: String, _ items: [String]) -> some View {
+        let visibleItems = items
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+
+        return VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.headline)
+
+            ForEach(Array(visibleItems.enumerated()), id: \.offset) { index, item in
+                Text("\(index + 1). \(item)")
+                    .font(.body)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .padding(10)
+        .background(Color(NSColor.controlBackgroundColor))
+        .cornerRadius(8)
+    }
+
+    private var aiLoadingView: some View {
+        HStack(spacing: 8) {
+            ProgressView()
+                .scaleEffect(0.8)
+            Text("Generating AI summary...")
+                .foregroundColor(.secondary)
+        }
+    }
+
+    private func aiErrorView(_ message: String) -> some View {
+        Text(message)
+            .font(.caption)
+            .foregroundColor(.secondary)
     }
 
     // MARK: - Loading and Empty States
@@ -451,9 +679,8 @@ struct DailyMeetingReportView: View {
 
             aiAnalysis = initialAIAnalysis
             aiErrorMessage = initialAIErrorMessage
-            showAISection = initialAIAnalysis != nil || initialAIErrorMessage != nil || autoRunAIOnAppear
 
-            if autoRunAIOnAppear && initialAIAnalysis == nil && !didRunAutoAIOnAppear {
+            if initialAIAnalysis == nil && !didRunAutoAIOnAppear {
                 didRunAutoAIOnAppear = true
                 runAIAnalysisForCurrentReport()
             }
@@ -493,6 +720,7 @@ struct DailyMeetingReportView: View {
                 if let chats = result.chatConversations {
                     expandedChats = Set(chats.prefix(5).map { $0.id })
                 }
+                runAIAnalysisForCurrentReport()
             } else {
                 print("   ❌ Report is nil! Check error dialog for details.")
                 // Error dialog will be shown by AppDelegate
@@ -586,5 +814,21 @@ struct DailyMeetingReportView: View {
         let endStr = formatter.string(from: end)
 
         return "\(startStr) - \(endStr)"
+    }
+
+    private func formatTimestamp(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d, HH:mm"
+        return formatter.string(from: date)
+    }
+
+    private func formatEventTimeRange(_ event: CalendarEvent) -> String {
+        if event.isAllDay {
+            return "All day"
+        }
+
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm"
+        return "\(formatter.string(from: event.start)) - \(formatter.string(from: event.end))"
     }
 }

@@ -8,12 +8,12 @@
 import Foundation
 
 struct AIReportAnalysis {
-    let summary: String           // 1-2 sentence summary
-    let highlights: [String]      // 3-5 key bullet points
+    let yesterdayWork: [String]      // What I did yesterday (from calendar + email + Teams)
+    let todayWork: [String]          // What I should do today (from upcoming events + unread mail/Teams)
     let correlations: [Correlation]  // Phase 3: Cross-references between events/emails/chats
-    let priorities: [Priority]    // Phase 3: AI-identified priority items
+    let priorities: [Priority]       // Phase 3: AI-identified priority items
     let generatedAt: Date
-    let error: String?            // If analysis failed
+    let error: String?               // If analysis failed
 
     var isSuccess: Bool {
         error == nil

@@ -131,37 +131,34 @@ struct AIAnalysisView: View {
             // Scrollable content
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    // Summary
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Summary")
-                            .font(.headline)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.secondary)
-
-                        Text(analysis.summary)
-                            .font(.body)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-
-                    // Highlights
-                    if !analysis.highlights.isEmpty {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("Key Highlights")
+                    // Yesterday's Work
+                    if !analysis.yesterdayWork.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Yesterday's Work")
                                 .font(.headline)
                                 .fontWeight(.semibold)
                                 .foregroundColor(.secondary)
 
-                            VStack(alignment: .leading, spacing: 8) {
-                                ForEach(Array(analysis.highlights.enumerated()), id: \.offset) { index, highlight in
-                                    HStack(alignment: .top, spacing: 8) {
-                                        Text("•")
-                                            .font(.body)
-                                            .foregroundColor(.blue)
-                                        Text(highlight)
-                                            .font(.body)
-                                            .fixedSize(horizontal: false, vertical: true)
-                                    }
-                                }
+                            ForEach(Array(analysis.yesterdayWork.enumerated()), id: \.offset) { _, item in
+                                Text("• \(item)")
+                                    .font(.body)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                    }
+
+                    // What To Do Today
+                    if !analysis.todayWork.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("What To Do Today")
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.secondary)
+
+                            ForEach(Array(analysis.todayWork.enumerated()), id: \.offset) { _, item in
+                                Text("• \(item)")
+                                    .font(.body)
+                                    .fixedSize(horizontal: false, vertical: true)
                             }
                         }
                     }
