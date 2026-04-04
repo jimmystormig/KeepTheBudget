@@ -197,7 +197,7 @@ class GraphAPIService {
 
                     components.queryItems = [
                         URLQueryItem(name: "$filter", value: "receivedDateTime ge \(startISO) and receivedDateTime le \(endISO)"),
-                        URLQueryItem(name: "$select", value: "id,subject,from,toRecipients,receivedDateTime,bodyPreview,conversationId,hasAttachments"),
+                        URLQueryItem(name: "$select", value: "id,subject,from,toRecipients,receivedDateTime,bodyPreview,conversationId,hasAttachments,isRead"),
                         URLQueryItem(name: "$orderby", value: "receivedDateTime desc"),
                         URLQueryItem(name: "$top", value: "100") // Request up to 100 messages per page
                     ]
@@ -297,6 +297,65 @@ class GraphAPIService {
         }
     }
 
+    func fetchUnreadInboxEmails() async throws -> [EmailMessage] {
+        print("📧 fetchUnreadInboxEmails() called")
+
+        do {
+            let userProfile = try await fetchUserProfile()
+            let userEmail = userProfile.mail
+
+            var allMessages: [EmailMessage] = []
+            var nextLink: String? = nil
+            var pageNumber = 1
+
+            repeat {
+                let url: URL
+
+                if let nextLink = nextLink, let nextURL = URL(string: nextLink) {
+                    url = nextURL
+                    print("   📄 Fetching unread email page \(pageNumber)...")
+                } else {
+                    var components = URLComponents(string: GraphConstants.mailFolderMessagesEndpoint(folderId: "inbox"))!
+                    components.queryItems = [
+                        URLQueryItem(name: "$filter", value: "isRead eq false"),
+                        URLQueryItem(name: "$select", value: "id,subject,from,toRecipients,receivedDateTime,bodyPreview,conversationId,hasAttachments,isRead"),
+                        URLQueryItem(name: "$orderby", value: "receivedDateTime desc"),
+                        URLQueryItem(name: "$top", value: "100")
+                    ]
+
+                    guard let initialURL = components.url else {
+                        throw AppError.networkError("Invalid URL")
+                    }
+                    url = initialURL
+                }
+
+                let data = try await makeAuthenticatedRequest(url: url)
+                let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+                let response = try JSONDecoder().decode(EmailListResponse.self, from: data)
+                let messagesWithStatus = response.value.map { $0.withSentStatus(userEmail: userEmail) }
+
+                allMessages.append(contentsOf: messagesWithStatus)
+                nextLink = json?["@odata.nextLink"] as? String
+                pageNumber += 1
+            } while nextLink != nil
+
+            print("   ✅ Total unread inbox emails fetched: \(allMessages.count)")
+            return allMessages
+        } catch let error as AppError {
+            throw error
+        } catch let error as AuthError {
+            throw AppError.authenticationExpired
+        } catch {
+            let nsError = error as NSError
+            if nsError.domain == "AuthManager" ||
+               nsError.localizedDescription.lowercased().contains("account") ||
+               nsError.localizedDescription.lowercased().contains("token") {
+                throw AppError.authenticationExpired
+            }
+            throw AppError.networkError(error.localizedDescription)
+        }
+    }
+
     // MARK: - Teams Chats
 
     func fetchChats(from startDate: Date, to endDate: Date) async throws -> [ChatConversation] {
@@ -305,100 +364,7 @@ class GraphAPIService {
         print("   End: \(endDate)")
 
         do {
-            var allChats: [Chat] = []
-            var nextLink: String? = nil
-            var pageNumber = 1
-
-            // Step 1: Fetch all chats (no date filter on /me/chats endpoint)
-            print("   📋 Fetching all chats...")
-
-            repeat {
-                let url: URL
-
-                if let nextLink = nextLink, let nextURL = URL(string: nextLink) {
-                    url = nextURL
-                    print("   📄 Fetching chat list page \(pageNumber)...")
-                } else {
-                    let baseURL = GraphConstants.chatsEndpoint
-                    var components = URLComponents(string: baseURL)!
-
-                    components.queryItems = [
-                        URLQueryItem(name: "$expand", value: "members"),
-                        URLQueryItem(name: "$orderby", value: "lastMessagePreview/createdDateTime desc"),  // Sort by most recent activity
-                        URLQueryItem(name: "$top", value: "30")  // Limit to 30 most recent chats
-                    ]
-
-                    guard let initialURL = components.url else {
-                        print("   ❌ Failed to build URL from components")
-                        throw AppError.networkError("Invalid URL")
-                    }
-                    url = initialURL
-                }
-
-                print("   📡 Request URL: \(url.absoluteString)")
-
-                let data = try await makeAuthenticatedRequest(url: url)
-                print("   ✅ Got response data: \(data.count) bytes")
-
-                // Debug: Save raw JSON response
-                if let jsonString = String(data: data, encoding: .utf8) {
-                    print("   📋 Raw JSON response (first 500 chars):")
-                    print(String(jsonString.prefix(500)))
-
-                    let debugFile = "/tmp/graph_chat_response.json"
-                    try? jsonString.write(toFile: debugFile, atomically: true, encoding: .utf8)
-                    print("   💾 Full response saved to: \(debugFile)")
-                }
-
-                let decoder = JSONDecoder()
-                decoder.dateDecodingStrategy = .iso8601
-
-                let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-
-                let response: ChatListResponse
-                do {
-                    response = try decoder.decode(ChatListResponse.self, from: data)
-                    print("   ✅ Successfully decoded \(response.value.count) chats")
-                } catch {
-                    print("   ❌ JSON Decoding failed: \(error)")
-                    if let decodingError = error as? DecodingError {
-                        switch decodingError {
-                        case .keyNotFound(let key, let context):
-                            print("      Missing key: \(key.stringValue)")
-                            print("      Context: \(context.debugDescription)")
-                        case .typeMismatch(let type, let context):
-                            print("      Type mismatch: expected \(type)")
-                            print("      Context: \(context.debugDescription)")
-                        case .valueNotFound(let type, let context):
-                            print("      Value not found: \(type)")
-                            print("      Context: \(context.debugDescription)")
-                        case .dataCorrupted(let context):
-                            print("      Data corrupted: \(context.debugDescription)")
-                        @unknown default:
-                            print("      Unknown decoding error")
-                        }
-                    }
-                    throw error
-                }
-
-                print("   📦 Received \(response.value.count) chats on page \(pageNumber)")
-                allChats.append(contentsOf: response.value)
-
-                // Only fetch first page (30 most recent chats) to avoid checking hundreds of old chats
-                // Most users will have recent activity in their top 30 chats
-                if pageNumber == 1 {
-                    print("   ⏹️  Stopping after first page to optimize performance")
-                    break
-                }
-
-                nextLink = json?["@odata.nextLink"] as? String
-                if nextLink != nil {
-                    print("   ➡️  More chats available, fetching next page...")
-                    pageNumber += 1
-                }
-
-            } while nextLink != nil
-
+            let allChats = try await fetchChatList()
             print("   ✅ Total chats fetched: \(allChats.count)")
             print("   📊 Checking all fetched chats for messages in date range")
 
@@ -444,6 +410,63 @@ class GraphAPIService {
             print("   ✅ Total conversations with messages: \(conversations.count)")
             return conversations.sorted { $0.lastMessageDate > $1.lastMessageDate }
 
+        } catch let error as AppError {
+            throw error
+        } catch let error as AuthError {
+            throw AppError.authenticationExpired
+        } catch {
+            let nsError = error as NSError
+            if nsError.domain == "AuthManager" ||
+               nsError.localizedDescription.lowercased().contains("account") ||
+               nsError.localizedDescription.lowercased().contains("token") {
+                throw AppError.authenticationExpired
+            }
+            throw AppError.networkError(error.localizedDescription)
+        }
+    }
+
+    func fetchUnreadChats(asOf date: Date) async throws -> [ChatConversation] {
+        print("💬 fetchUnreadChats() called")
+        print("   As of: \(date)")
+
+        do {
+            let allChats = try await fetchChatList()
+            var conversations: [ChatConversation] = []
+            let earliestUnreadBoundary = Calendar.current.date(byAdding: .day, value: -7, to: date) ?? date.startOfDay
+
+            for chat in allChats {
+                let readMarker = chat.viewpoint?.lastMessageReadDateTime
+                let fetchStart = max(readMarker ?? earliestUnreadBoundary, earliestUnreadBoundary)
+
+                do {
+                    let messages = try await fetchChatMessages(chatId: chat.id, from: fetchStart, to: date)
+                    let unreadMessages = messages.filter { message in
+                        guard let readMarker else { return true }
+                        return message.createdDateTime > readMarker
+                    }
+
+                    guard !unreadMessages.isEmpty else { continue }
+
+                    let conversation = ChatConversation(
+                        id: chat.id,
+                        topic: chat.topic,
+                        chatType: ChatType(rawValue: chat.chatType) ?? .oneOnOne,
+                        messages: unreadMessages.sorted { $0.createdDateTime < $1.createdDateTime },
+                        participants: chat.members ?? [],
+                        lastMessageDate: unreadMessages.map(\.createdDateTime).max() ?? date
+                    )
+                    conversations.append(conversation)
+                } catch let error as AppError {
+                    if case .graphAPIError(let statusCode, _) = error, statusCode == 403 {
+                        print("      ⚠️  Skipping unread scan for chat (no longer a member): \(chat.topic ?? chat.id)")
+                        continue
+                    }
+                    throw error
+                }
+            }
+
+            print("   ✅ Total conversations with unread messages: \(conversations.count)")
+            return conversations.sorted { $0.lastMessageDate > $1.lastMessageDate }
         } catch let error as AppError {
             throw error
         } catch let error as AuthError {
@@ -595,6 +618,98 @@ class GraphAPIService {
     }
 
     // MARK: - Private Helpers
+
+    private func fetchChatList(limit: Int = 30) async throws -> [Chat] {
+        var allChats: [Chat] = []
+        var nextLink: String? = nil
+        var pageNumber = 1
+
+        print("   📋 Fetching chat list...")
+
+        repeat {
+            let url: URL
+
+            if let nextLink = nextLink, let nextURL = URL(string: nextLink) {
+                url = nextURL
+                print("   📄 Fetching chat list page \(pageNumber)...")
+            } else {
+                let baseURL = GraphConstants.chatsEndpoint
+                var components = URLComponents(string: baseURL)!
+
+                components.queryItems = [
+                    URLQueryItem(name: "$expand", value: "members"),
+                    URLQueryItem(name: "$orderby", value: "lastMessagePreview/createdDateTime desc"),
+                    URLQueryItem(name: "$top", value: "\(limit)")
+                ]
+
+                guard let initialURL = components.url else {
+                    throw AppError.networkError("Invalid URL")
+                }
+                url = initialURL
+            }
+
+            print("   📡 Request URL: \(url.absoluteString)")
+
+            let data = try await makeAuthenticatedRequest(url: url)
+            print("   ✅ Got response data: \(data.count) bytes")
+
+            if let jsonString = String(data: data, encoding: .utf8) {
+                print("   📋 Raw JSON response (first 500 chars):")
+                print(String(jsonString.prefix(500)))
+
+                let debugFile = "/tmp/graph_chat_response.json"
+                try? jsonString.write(toFile: debugFile, atomically: true, encoding: .utf8)
+                print("   💾 Full response saved to: \(debugFile)")
+            }
+
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+
+            let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+
+            let response: ChatListResponse
+            do {
+                response = try decoder.decode(ChatListResponse.self, from: data)
+                print("   ✅ Successfully decoded \(response.value.count) chats")
+            } catch {
+                print("   ❌ JSON Decoding failed: \(error)")
+                if let decodingError = error as? DecodingError {
+                    switch decodingError {
+                    case .keyNotFound(let key, let context):
+                        print("      Missing key: \(key.stringValue)")
+                        print("      Context: \(context.debugDescription)")
+                    case .typeMismatch(let type, let context):
+                        print("      Type mismatch: expected \(type)")
+                        print("      Context: \(context.debugDescription)")
+                    case .valueNotFound(let type, let context):
+                        print("      Value not found: \(type)")
+                        print("      Context: \(context.debugDescription)")
+                    case .dataCorrupted(let context):
+                        print("      Data corrupted: \(context.debugDescription)")
+                    @unknown default:
+                        print("      Unknown decoding error")
+                    }
+                }
+                throw error
+            }
+
+            print("   📦 Received \(response.value.count) chats on page \(pageNumber)")
+            allChats.append(contentsOf: response.value)
+
+            if pageNumber == 1 {
+                print("   ⏹️  Stopping after first page to optimize performance")
+                break
+            }
+
+            nextLink = json?["@odata.nextLink"] as? String
+            if nextLink != nil {
+                print("   ➡️  More chats available, fetching next page...")
+                pageNumber += 1
+            }
+        } while nextLink != nil
+
+        return allChats
+    }
 
     private func makeAuthenticatedRequest(url: URL, isRetry: Bool = false) async throws -> Data {
         print("   🔑 Getting access token...")

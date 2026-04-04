@@ -208,6 +208,7 @@ struct EmailThreadView_Previews: PreviewProvider {
             bodyPreview: "Here's the latest update on the project. We've made good progress...",
             conversationId: "conv-1",
             hasAttachments: true,
+            isRead: true,
             isSent: true
         )
 
@@ -220,6 +221,7 @@ struct EmailThreadView_Previews: PreviewProvider {
             bodyPreview: "Thanks for the update! Looks great. One question about...",
             conversationId: "conv-1",
             hasAttachments: false,
+            isRead: false,
             isSent: false
         )
 

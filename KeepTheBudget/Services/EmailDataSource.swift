@@ -27,6 +27,17 @@ class EmailDataSource {
 
         // Fetch all emails in date range
         let emails = try await graphAPIService.fetchEmails(from: startDate, to: endDate)
+        return buildThreads(from: emails)
+    }
+
+    /// Fetch unread emails and group them into threads
+    func fetchUnreadEmailThreads() async throws -> [EmailThread] {
+        print("📧 EmailDataSource: Fetching unread inbox emails")
+        let emails = try await graphAPIService.fetchUnreadInboxEmails()
+        return buildThreads(from: emails)
+    }
+
+    private func buildThreads(from emails: [EmailMessage]) -> [EmailThread] {
         print("   Received \(emails.count) emails")
 
         // Group by conversationId

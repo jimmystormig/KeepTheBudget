@@ -17,6 +17,7 @@ struct EmailMessage: Identifiable, Codable {
     let bodyPreview: String?  // Optional - First 150 characters from Graph API
     let conversationId: String  // Used for thread grouping
     let hasAttachments: Bool
+    let isRead: Bool
     let isSent: Bool  // Computed based on sender matching user email
 
     /// Display subject with fallback for null values
@@ -38,6 +39,7 @@ struct EmailMessage: Identifiable, Codable {
         case bodyPreview
         case conversationId
         case hasAttachments
+        case isRead
     }
 
     /// Initialize from Graph API response
@@ -51,6 +53,7 @@ struct EmailMessage: Identifiable, Codable {
         bodyPreview = try container.decodeIfPresent(String.self, forKey: .bodyPreview)  // Handle null previews
         conversationId = try container.decode(String.self, forKey: .conversationId)
         hasAttachments = try container.decode(Bool.self, forKey: .hasAttachments)
+        isRead = try container.decodeIfPresent(Bool.self, forKey: .isRead) ?? false
 
         // Parse ISO 8601 date
         let dateString = try container.decode(String.self, forKey: .receivedDateTime)
@@ -72,7 +75,7 @@ struct EmailMessage: Identifiable, Codable {
     /// Manual initializer for testing and user email comparison
     init(id: String, subject: String?, from: EmailAddress?, to: [EmailAddress],
          receivedDateTime: Date, bodyPreview: String?, conversationId: String,
-         hasAttachments: Bool, isSent: Bool) {
+         hasAttachments: Bool, isRead: Bool, isSent: Bool) {
         self.id = id
         self.subject = subject
         self.from = from
@@ -81,6 +84,7 @@ struct EmailMessage: Identifiable, Codable {
         self.bodyPreview = bodyPreview
         self.conversationId = conversationId
         self.hasAttachments = hasAttachments
+        self.isRead = isRead
         self.isSent = isSent
     }
 
@@ -95,6 +99,7 @@ struct EmailMessage: Identifiable, Codable {
             bodyPreview: bodyPreview,
             conversationId: conversationId,
             hasAttachments: hasAttachments,
+            isRead: isRead,
             isSent: from?.address.caseInsensitiveCompare(userEmail) == .orderedSame
         )
     }

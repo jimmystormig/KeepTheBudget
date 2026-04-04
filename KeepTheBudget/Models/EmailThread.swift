@@ -64,6 +64,10 @@ struct EmailThread: Identifiable {
         messages.filter { !$0.isSent }.count
     }
 
+    var unreadReceivedCount: Int {
+        messages.filter { !$0.isSent && !$0.isRead }.count
+    }
+
     /// Most recent message preview
     var latestPreview: String {
         messages.last?.safeBodyPreview ?? ""

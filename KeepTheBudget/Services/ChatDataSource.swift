@@ -29,4 +29,15 @@ class ChatDataSource {
         // Sort by most recent activity
         return conversations.sorted { $0.lastMessageDate > $1.lastMessageDate }
     }
+
+    /// Fetch unread chat conversations as of the provided moment
+    func fetchUnreadChatConversations(asOf date: Date) async throws -> [ChatConversation] {
+        print("💬 ChatDataSource.fetchUnreadChatConversations()")
+        print("   As of: \(date)")
+
+        let conversations = try await graphAPIService.fetchUnreadChats(asOf: date)
+
+        print("   ✅ Found \(conversations.count) conversations with unread messages")
+        return conversations.sorted { $0.lastMessageDate > $1.lastMessageDate }
+    }
 }

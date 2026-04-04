@@ -246,12 +246,41 @@ struct Chat: Codable {
     let topic: String?
     let chatType: String
     let members: [ChatParticipant]?
+    let viewpoint: ChatViewpoint?
 
     enum CodingKeys: String, CodingKey {
         case id
         case topic
         case chatType
         case members
+        case viewpoint
+    }
+}
+
+struct ChatViewpoint: Codable {
+    let lastMessageReadDateTime: Date?
+
+    enum CodingKeys: String, CodingKey {
+        case lastMessageReadDateTime
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let dateString = try container.decodeIfPresent(String.self, forKey: .lastMessageReadDateTime)
+        lastMessageReadDateTime = Self.parseDate(dateString)
+    }
+
+    private static func parseDate(_ dateString: String?) -> Date? {
+        guard let dateString else { return nil }
+
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = formatter.date(from: dateString) {
+            return date
+        }
+
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter.date(from: dateString)
     }
 }
 

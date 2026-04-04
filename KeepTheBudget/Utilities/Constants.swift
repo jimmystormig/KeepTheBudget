@@ -16,6 +16,11 @@ enum GraphConstants {
     static let messagesEndpoint = "\(baseURL)/me/messages"
     static let chatsEndpoint = "\(baseURL)/me/chats"
 
+    static func mailFolderMessagesEndpoint(folderId: String) -> String {
+        let encodedFolderId = folderId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? folderId
+        return "\(baseURL)/me/mailFolders/\(encodedFolderId)/messages"
+    }
+
     static func eventsEndpoint(calendarId: String) -> String {
         // URL encode the calendar ID as it may contain special characters
         let encodedCalendarId = calendarId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? calendarId
