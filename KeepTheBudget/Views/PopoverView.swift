@@ -194,7 +194,6 @@ struct PopoverView: View {
             }
             .padding(.horizontal)
             .padding(.vertical, 8)
-            .background(Color.gray.opacity(0.05))
 
             Divider()
 
@@ -237,7 +236,7 @@ struct MenuButton: View {
             .padding(.horizontal)
             .padding(.vertical, 10)
             .contentShape(Rectangle())
-            .background(isHovered ? Color.blue.opacity(0.1) : Color.clear)
+            .background(isHovered ? Color.primary.opacity(0.08) : Color.clear)
         }
         .buttonStyle(.plain)
         .onHover { hovering in

@@ -20,9 +20,9 @@ KeepTheBudget is a native macOS menu bar application that helps you track your s
 
 ## Requirements
 
-- macOS 12.0 or later
+- macOS 27 Golden Gate or later
 - Office 365 account
-- Xcode 14.0 or later (for building from source)
+- Xcode 27 or later (for building from source)
 
 ## Installation
 
@@ -201,9 +201,9 @@ The app only counts events where YOU are the organizer:
 
 ### Tech Stack
 
-- **Language**: Swift 5.9
-- **UI**: SwiftUI + AppKit (for menu bar)
-- **Authentication**: MSAL (Microsoft Authentication Library)
+- **Language**: Swift 6
+- **UI**: SwiftUI + AppKit with macOS 27 Liquid Glass
+- **Authentication**: MSAL 2.x (Microsoft Authentication Library)
 - **API**: Microsoft Graph API v1.0
 - **Storage**: Keychain (tokens) + UserDefaults (preferences)
 

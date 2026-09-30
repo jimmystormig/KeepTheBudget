@@ -15,9 +15,6 @@ struct ConfigurationSnapshot {
     let accessToken: String?
     let refreshToken: String?
     let tokenExpiry: String?
-    let azureOpenAIEndpoint: String?
-    let azureOpenAIApiKey: String?
-    let azureOpenAIDeploymentName: String?
 
     var hasConfiguration: Bool {
         return clientId != nil && tenantId != nil
@@ -27,14 +24,16 @@ struct ConfigurationSnapshot {
         return accessToken != nil
     }
 
-    var hasAzureOpenAIConfiguration: Bool {
-        return azureOpenAIEndpoint != nil && azureOpenAIApiKey != nil && azureOpenAIDeploymentName != nil
-    }
 }
 
-class StorageManager {
+final class StorageManager: @unchecked Sendable {
     private let keychain = KeychainHelper.shared
     private let userDefaults = UserDefaults.standard
+    private let deprecatedCredentialKeys = [
+        "azure_openai_endpoint",
+        "azure_openai_api_key",
+        "azure_openai_deployment"
+    ]
 
     // MARK: - Token Management
 
@@ -147,44 +146,6 @@ class StorageManager {
         _ = keychain.deleteConfigurationBundle()
     }
 
-    // MARK: - Azure OpenAI Configuration Management
-
-    func saveAzureOpenAIConfig(_ config: AzureOpenAIConfiguration) -> Bool {
-        let success = keychain.save(config.endpoint, forKey: AzureOpenAIKeys.endpoint) &&
-                     keychain.save(config.apiKey, forKey: AzureOpenAIKeys.apiKey) &&
-                     keychain.save(config.deploymentName, forKey: AzureOpenAIKeys.deploymentName)
-
-        // Update the bundle to keep it in sync
-        if success {
-            updateConfigurationBundle()
-        }
-
-        return success
-    }
-
-    func loadAzureOpenAIConfig() -> AzureOpenAIConfiguration? {
-        guard let endpoint = keychain.loadString(forKey: AzureOpenAIKeys.endpoint),
-              let apiKey = keychain.loadString(forKey: AzureOpenAIKeys.apiKey),
-              let deploymentName = keychain.loadString(forKey: AzureOpenAIKeys.deploymentName) else {
-            return nil
-        }
-
-        return AzureOpenAIConfiguration(
-            endpoint: endpoint,
-            apiKey: apiKey,
-            deploymentName: deploymentName
-        )
-    }
-
-    func deleteAzureOpenAIConfig() {
-        _ = keychain.delete(forKey: AzureOpenAIKeys.endpoint)
-        _ = keychain.delete(forKey: AzureOpenAIKeys.apiKey)
-        _ = keychain.delete(forKey: AzureOpenAIKeys.deploymentName)
-
-        // Update the bundle
-        updateConfigurationBundle()
-    }
-
     // MARK: - Bundle Synchronization
 
     /// Update the configuration bundle to stay in sync with individual items
@@ -197,10 +158,7 @@ class StorageManager {
             tenantId: loadTenantId(),
             accessToken: loadAccessToken(),
             refreshToken: loadRefreshToken(),
-            tokenExpiry: expiryTimestamp,
-            azureOpenAIEndpoint: keychain.loadString(forKey: AzureOpenAIKeys.endpoint),
-            azureOpenAIApiKey: keychain.loadString(forKey: AzureOpenAIKeys.apiKey),
-            azureOpenAIDeploymentName: keychain.loadString(forKey: AzureOpenAIKeys.deploymentName)
+            tokenExpiry: expiryTimestamp
         )
         _ = keychain.saveConfigurationBundle(bundle)
     }
@@ -220,17 +178,14 @@ class StorageManager {
             print("   Access Token: \(bundle.accessToken != nil ? "present" : "missing")")
             print("   Refresh Token: \(bundle.refreshToken != nil ? "present" : "missing")")
             print("   Token Expiry: \(bundle.tokenExpiry != nil ? "present" : "missing")")
-            print("   Azure OpenAI: \(bundle.azureOpenAIEndpoint != nil ? "configured" : "not configured")")
+            removeDeprecatedCredentialsAndRewriteBundle(bundle)
 
             return ConfigurationSnapshot(
                 clientId: bundle.clientId,
                 tenantId: bundle.tenantId,
                 accessToken: bundle.accessToken,
                 refreshToken: bundle.refreshToken,
-                tokenExpiry: bundle.tokenExpiry,
-                azureOpenAIEndpoint: bundle.azureOpenAIEndpoint,
-                azureOpenAIApiKey: bundle.azureOpenAIApiKey,
-                azureOpenAIDeploymentName: bundle.azureOpenAIDeploymentName
+                tokenExpiry: bundle.tokenExpiry
             )
         }
 
@@ -242,9 +197,6 @@ class StorageManager {
         let accessToken = loadAccessToken()
         let refreshToken = loadRefreshToken()
         let tokenExpiry = loadTokenExpiry().map { String($0.timeIntervalSince1970) }
-        let azureEndpoint = keychain.loadString(forKey: AzureOpenAIKeys.endpoint)
-        let azureApiKey = keychain.loadString(forKey: AzureOpenAIKeys.apiKey)
-        let azureDeployment = keychain.loadString(forKey: AzureOpenAIKeys.deploymentName)
 
         // Migrate to bundle immediately to avoid future prompts
         let bundle = KeychainConfigurationBundle(
@@ -252,12 +204,9 @@ class StorageManager {
             tenantId: tenantId,
             accessToken: accessToken,
             refreshToken: refreshToken,
-            tokenExpiry: tokenExpiry,
-            azureOpenAIEndpoint: azureEndpoint,
-            azureOpenAIApiKey: azureApiKey,
-            azureOpenAIDeploymentName: azureDeployment
+            tokenExpiry: tokenExpiry
         )
-        _ = keychain.saveConfigurationBundle(bundle)
+        removeDeprecatedCredentialsAndRewriteBundle(bundle)
         print("   ✅ Migrated to configuration bundle for future launches")
 
         print("   Client ID: \(clientId != nil ? "present" : "missing")")
@@ -265,18 +214,25 @@ class StorageManager {
         print("   Access Token: \(accessToken != nil ? "present" : "missing")")
         print("   Refresh Token: \(refreshToken != nil ? "present" : "missing")")
         print("   Token Expiry: \(tokenExpiry != nil ? "present" : "missing")")
-        print("   Azure OpenAI: \(azureEndpoint != nil ? "configured" : "not configured")")
 
         return ConfigurationSnapshot(
             clientId: clientId,
             tenantId: tenantId,
             accessToken: accessToken,
             refreshToken: refreshToken,
-            tokenExpiry: tokenExpiry,
-            azureOpenAIEndpoint: azureEndpoint,
-            azureOpenAIApiKey: azureApiKey,
-            azureOpenAIDeploymentName: azureDeployment
+            tokenExpiry: tokenExpiry
         )
+    }
+
+    private func removeDeprecatedCredentialsAndRewriteBundle(_ bundle: KeychainConfigurationBundle) {
+        let bundleSaved = keychain.saveConfigurationBundle(bundle)
+        let credentialsDeleted = deprecatedCredentialKeys
+            .map { keychain.delete(forKey: $0) }
+            .allSatisfy { $0 }
+
+        if !bundleSaved || !credentialsDeleted {
+            print("⚠️  Deprecated credentials cleanup was incomplete and will be retried at the next launch")
+        }
     }
 
     // MARK: - Preferences Management

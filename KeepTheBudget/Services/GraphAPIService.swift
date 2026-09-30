@@ -7,7 +7,7 @@
 
 import Foundation
 
-class GraphAPIService {
+final class GraphAPIService: @unchecked Sendable {
     private let authManager: AuthManager
 
     init(authManager: AuthManager) {

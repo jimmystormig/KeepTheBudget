@@ -7,13 +7,14 @@
 
 import Foundation
 
+@MainActor
 class DailyReportScheduler {
     private var timer: Timer?
     private let storageManager: StorageManager
-    private let onTrigger: () async -> Void
+    private let onTrigger: @MainActor () async -> Void
     private var preferences: AppPreferences
 
-    init(storageManager: StorageManager, onTrigger: @escaping () async -> Void) {
+    init(storageManager: StorageManager, onTrigger: @escaping @MainActor () async -> Void) {
         self.storageManager = storageManager
         self.onTrigger = onTrigger
         self.preferences = storageManager.loadPreferences()
@@ -79,7 +80,4 @@ class DailyReportScheduler {
         max(0, min(59, preferences.autoDailyReportMinute))
     }
 
-    deinit {
-        stop()
-    }
 }

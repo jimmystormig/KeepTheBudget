@@ -1,10 +1,10 @@
-// swift-tools-version: 5.9
+// swift-tools-version: 6.0
 import PackageDescription
 
 let package = Package(
     name: "KeepTheBudget",
     platforms: [
-        .macOS(.v12)
+        .macOS(.v27)
     ],
     products: [
         .executable(
@@ -15,7 +15,7 @@ let package = Package(
     dependencies: [
         .package(
             url: "https://github.com/AzureAD/microsoft-authentication-library-for-objc",
-            from: "1.3.0"
+            from: "2.14.1"
         )
     ],
     targets: [

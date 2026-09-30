@@ -13,7 +13,6 @@
 		04BF7319C10D5ACDF5B5ED32 /* ReportDataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 509B2931DCB6A3DE9834BFA0 /* ReportDataSource.swift */; };
 		0AA0DD56FCE2B923A1B50BBC /* UpdateScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 243D319E38C21C7D0B3D8547 /* UpdateScheduler.swift */; };
 		0C0867F24F802F98748183AC /* TimeCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED11956CC259F1EACC65545F /* TimeCalculator.swift */; };
-		0F5470FDA56D7A7FE30D092E /* AzureOpenAIConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1617DCA2B3B8CF9D3ECE752 /* AzureOpenAIConfiguration.swift */; };
 		10E5BF59BE0C10AAB8031958 /* CalendarSelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 616FC1B4E4734B23FDA93B90 /* CalendarSelectionView.swift */; };
 		130C9099F474A22CFBE109E6 /* CategorySummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = D226D2AC79DE3DF9020C6526 /* CategorySummary.swift */; };
 		1539B822D336E47DB98D843B /* WorkdayCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66AAE59D94367A2087AF7502 /* WorkdayCalculator.swift */; };
@@ -26,14 +25,11 @@
 		32C18C81AC0B4FD772751F7F /* ChatConversation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92F70D5B53AD791D30B96F62 /* ChatConversation.swift */; };
 		38D87A34DA171DB26B9E17A6 /* StringExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDE1B07EA810F7CE71EEA65A /* StringExtensions.swift */; };
 		3A7F27A8D26A43FEFE0A14B1 /* CalendarInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E3EFC37B6CE1AF5E895648D /* CalendarInfo.swift */; };
-		3C244B7EB90987AFB0845D0D /* AIReportAnalysis.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6ED6A319BD3A85EC9A13B02 /* AIReportAnalysis.swift */; };
 		47420F6BC9C9C30C459F071E /* ChatDataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9BC61D2596024D92B13BCE1 /* ChatDataSource.swift */; };
 		49AF31E8C8A42C60D518F32F /* TimeReport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1354440ECF2E2B57982B2C3B /* TimeReport.swift */; };
 		5A049D797C8C28E55CC649C4 /* MSAL in Frameworks */ = {isa = PBXBuildFile; productRef = A19B0DB62C17BEBE0C8E91D9 /* MSAL */; };
 		656C83497B3994D54E2D7D4C /* AppPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 867F21DA359BEB77E128CE7B /* AppPreferences.swift */; };
-		6A6C39A39D0D22C2B5060A0D /* AIAnalysisView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26071C21F07034FB1E01F23F /* AIAnalysisView.swift */; };
 		6FA47B77AD091BDFB4738C14 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15FB6CC30B83E2187A70EFF7 /* SettingsView.swift */; };
-		7472ACE952F48DF17E544D3D /* AIReportAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 773D41D15E11D3A849CAD0C5 /* AIReportAnalyzer.swift */; };
 		7D9E1BC0A838DDC61CCFAA6C /* CalendarEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = D17C1653452895D4161EA6C8 /* CalendarEvent.swift */; };
 		872B68F77790FAD967A2A830 /* KeepTheBudgetApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6FE8A6CD47CF370FC862EB6 /* KeepTheBudgetApp.swift */; };
 		8A7B4DBEF60E6B6557528AC2 /* EmailDataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EC14441521EA9E39696A5E8 /* EmailDataSource.swift */; };
@@ -54,20 +50,19 @@
 		CFAD6B6CE7290DFD62584E73 /* StorageManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9901D724A1A3385066F009D /* StorageManager.swift */; };
 		DC47EF6E343931B751D60116 /* DailyReportScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = D492F022375B2A22D6971BBE /* DailyReportScheduler.swift */; };
 		E1B1D7BBB3109B0111CD0744 /* DeviceCodeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A3E89C4A69442E291ED2AE6 /* DeviceCodeView.swift */; };
-		E8CF57324C91F62C01E4AFB1 /* AISettingsTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 085A5CAEC753805A214966AC /* AISettingsTab.swift */; };
+		E80965E6C2066A300CC49F7D /* GoldenGateUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06641A8847C681D6F16A1362 /* GoldenGateUI.swift */; };
 		E908558AB808F94A97B0CEA7 /* UserProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD016D6D441D7E72C15FFC12 /* UserProfile.swift */; };
 		F35EE69D65D484C6FAFEFCD2 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFFC9AC4B789784F20AB8979 /* AppDelegate.swift */; };
 		F6E5AF15FB3DEC8E6C47641E /* PopoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72E42341BDF4E09794A686F5 /* PopoverView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		085A5CAEC753805A214966AC /* AISettingsTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AISettingsTab.swift; sourceTree = "<group>"; };
+		06641A8847C681D6F16A1362 /* GoldenGateUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoldenGateUI.swift; sourceTree = "<group>"; };
 		1354440ECF2E2B57982B2C3B /* TimeReport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeReport.swift; sourceTree = "<group>"; };
 		1383747AA25BD7758E826757 /* DateExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateExtensions.swift; sourceTree = "<group>"; };
 		15FB6CC30B83E2187A70EFF7 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		1E017208212F7B5EEE618456 /* TimeSummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeSummary.swift; sourceTree = "<group>"; };
 		243D319E38C21C7D0B3D8547 /* UpdateScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateScheduler.swift; sourceTree = "<group>"; };
-		26071C21F07034FB1E01F23F /* AIAnalysisView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIAnalysisView.swift; sourceTree = "<group>"; };
 		29BDB7D26083D5D63463FFF1 /* DailyMeetingReportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyMeetingReportView.swift; sourceTree = "<group>"; };
 		2EC14441521EA9E39696A5E8 /* EmailDataSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmailDataSource.swift; sourceTree = "<group>"; };
 		3252E8680CFEEBE0D9A704F7 /* ConfigurationSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigurationSetupView.swift; sourceTree = "<group>"; };
@@ -83,7 +78,6 @@
 		722C082D31C56546063D4D24 /* TimeReportGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeReportGenerator.swift; sourceTree = "<group>"; };
 		72E42341BDF4E09794A686F5 /* PopoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PopoverView.swift; sourceTree = "<group>"; };
 		7445CF9B4EE2A4B45188FA7C /* AuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
-		773D41D15E11D3A849CAD0C5 /* AIReportAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIReportAnalyzer.swift; sourceTree = "<group>"; };
 		7E3EFC37B6CE1AF5E895648D /* CalendarInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarInfo.swift; sourceTree = "<group>"; };
 		82418F7BD84E475D95CFB3AF /* ConfigurationValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigurationValidator.swift; sourceTree = "<group>"; };
 		867F21DA359BEB77E128CE7B /* AppPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppPreferences.swift; sourceTree = "<group>"; };
@@ -99,11 +93,9 @@
 		C32841411508A952DC0A0734 /* EmailMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmailMessage.swift; sourceTree = "<group>"; };
 		CB50E29B2BCB400E5357843C /* TimeFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeFormatter.swift; sourceTree = "<group>"; };
 		CFFC9AC4B789784F20AB8979 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
-		D1617DCA2B3B8CF9D3ECE752 /* AzureOpenAIConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AzureOpenAIConfiguration.swift; sourceTree = "<group>"; };
 		D17C1653452895D4161EA6C8 /* CalendarEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarEvent.swift; sourceTree = "<group>"; };
 		D226D2AC79DE3DF9020C6526 /* CategorySummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategorySummary.swift; sourceTree = "<group>"; };
 		D492F022375B2A22D6971BBE /* DailyReportScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyReportScheduler.swift; sourceTree = "<group>"; };
-		D6ED6A319BD3A85EC9A13B02 /* AIReportAnalysis.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIReportAnalysis.swift; sourceTree = "<group>"; };
 		D77A0772F68DA0B8F140E757 /* WeeklyReportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklyReportView.swift; sourceTree = "<group>"; };
 		DC62CAC6A12B775938B3C078 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		DCCBEBB613F3C98EE570D2B2 /* OAuthModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OAuthModels.swift; sourceTree = "<group>"; };
@@ -139,7 +131,6 @@
 		8AF757375E42E07EF64F9EB8 /* Views */ = {
 			isa = PBXGroup;
 			children = (
-				085A5CAEC753805A214966AC /* AISettingsTab.swift */,
 				616FC1B4E4734B23FDA93B90 /* CalendarSelectionView.swift */,
 				3252E8680CFEEBE0D9A704F7 /* ConfigurationSetupView.swift */,
 				9A3E89C4A69442E291ED2AE6 /* DeviceCodeView.swift */,
@@ -153,7 +144,6 @@
 		8CFA6E9CB04180280421A5CA /* Components */ = {
 			isa = PBXGroup;
 			children = (
-				26071C21F07034FB1E01F23F /* AIAnalysisView.swift */,
 				4B5D478ABC4756F226EC78BB /* CategoryBreakdownView.swift */,
 				9BA05B7BACFDF8EEF1BC603F /* ChatConversationView.swift */,
 				29BDB7D26083D5D63463FFF1 /* DailyMeetingReportView.swift */,
@@ -167,10 +157,8 @@
 		9424892FF8F4FAD822A4B8B2 /* Models */ = {
 			isa = PBXGroup;
 			children = (
-				D6ED6A319BD3A85EC9A13B02 /* AIReportAnalysis.swift */,
 				3D9416ED900361823C79386E /* AppError.swift */,
 				867F21DA359BEB77E128CE7B /* AppPreferences.swift */,
-				D1617DCA2B3B8CF9D3ECE752 /* AzureOpenAIConfiguration.swift */,
 				D17C1653452895D4161EA6C8 /* CalendarEvent.swift */,
 				7E3EFC37B6CE1AF5E895648D /* CalendarInfo.swift */,
 				D226D2AC79DE3DF9020C6526 /* CategorySummary.swift */,
@@ -219,7 +207,6 @@
 		DC642EA3F718702CC54FFDF1 /* Services */ = {
 			isa = PBXGroup;
 			children = (
-				773D41D15E11D3A849CAD0C5 /* AIReportAnalyzer.swift */,
 				7445CF9B4EE2A4B45188FA7C /* AuthManager.swift */,
 				B9BC61D2596024D92B13BCE1 /* ChatDataSource.swift */,
 				D492F022375B2A22D6971BBE /* DailyReportScheduler.swift */,
@@ -240,6 +227,7 @@
 				82418F7BD84E475D95CFB3AF /* ConfigurationValidator.swift */,
 				FFA54EC4D4D3C73AEFF0ECFD /* Constants.swift */,
 				1383747AA25BD7758E826757 /* DateExtensions.swift */,
+				06641A8847C681D6F16A1362 /* GoldenGateUI.swift */,
 				5FE52DDBA411B0FA5AF32122 /* KeychainHelper.swift */,
 				EDE1B07EA810F7CE71EEA65A /* StringExtensions.swift */,
 				CB50E29B2BCB400E5357843C /* TimeFormatter.swift */,
@@ -290,9 +278,10 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+				};
 			};
 			buildConfigurationList = BB503BF2BEBB23A710BAC0D4 /* Build configuration list for PBXProject "KeepTheBudget" */;
-			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -305,6 +294,7 @@
 				3BBC131658AF58F4EF572749 /* XCRemoteSwiftPackageReference "microsoft-authentication-library-for-objc" */,
 			);
 			preferredProjectObjectVersion = 77;
+			productRefGroup = B5FB9AE53CB18773714423EA /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -329,15 +319,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				6A6C39A39D0D22C2B5060A0D /* AIAnalysisView.swift in Sources */,
-				3C244B7EB90987AFB0845D0D /* AIReportAnalysis.swift in Sources */,
-				7472ACE952F48DF17E544D3D /* AIReportAnalyzer.swift in Sources */,
-				E8CF57324C91F62C01E4AFB1 /* AISettingsTab.swift in Sources */,
 				F35EE69D65D484C6FAFEFCD2 /* AppDelegate.swift in Sources */,
 				A80AC437FCBD76FFC98C01BA /* AppError.swift in Sources */,
 				656C83497B3994D54E2D7D4C /* AppPreferences.swift in Sources */,
 				CE05C040BC57A2035E4026AD /* AuthManager.swift in Sources */,
-				0F5470FDA56D7A7FE30D092E /* AzureOpenAIConfiguration.swift in Sources */,
 				7D9E1BC0A838DDC61CCFAA6C /* CalendarEvent.swift in Sources */,
 				3A7F27A8D26A43FEFE0A14B1 /* CalendarInfo.swift in Sources */,
 				10E5BF59BE0C10AAB8031958 /* CalendarSelectionView.swift in Sources */,
@@ -359,6 +344,7 @@
 				AB4BCB70419C6CBF07AA4B32 /* EmailThread.swift in Sources */,
 				23C0ABE4850B06B325E7E844 /* EmailThreadView.swift in Sources */,
 				28B4764F82D394EAAF9FFFCC /* GoalStatus.swift in Sources */,
+				E80965E6C2066A300CC49F7D /* GoldenGateUI.swift in Sources */,
 				A6AC4E55078F0EB71DB44633 /* GraphAPIService.swift in Sources */,
 				872B68F77790FAD967A2A830 /* KeepTheBudgetApp.swift in Sources */,
 				033176AE831ACAD15F688398 /* KeychainHelper.swift in Sources */,
@@ -430,7 +416,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
 				MARKETING_VERSION = 1.0.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
@@ -438,7 +424,7 @@
 				SDKROOT = macosx;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
-				SWIFT_VERSION = 5.9;
+				SWIFT_VERSION = 6.0;
 			};
 			name = Release;
 		};
@@ -458,7 +444,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.keepthebudget.KeepTheBudget;
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.9;
+				SWIFT_VERSION = 6.0;
 			};
 			name = Debug;
 		};
@@ -514,7 +500,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
 				MARKETING_VERSION = 1.0.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -523,7 +509,7 @@
 				SDKROOT = macosx;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-				SWIFT_VERSION = 5.9;
+				SWIFT_VERSION = 6.0;
 			};
 			name = Debug;
 		};
@@ -543,7 +529,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.keepthebudget.KeepTheBudget;
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.9;
+				SWIFT_VERSION = 6.0;
 			};
 			name = Release;
 		};
@@ -576,7 +562,7 @@
 			repositoryURL = "https://github.com/AzureAD/microsoft-authentication-library-for-objc";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 1.3.0;
+				minimumVersion = 2.14.1;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */

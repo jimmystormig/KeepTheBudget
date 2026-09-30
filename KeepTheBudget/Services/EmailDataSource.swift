@@ -8,7 +8,7 @@
 import Foundation
 
 /// Service for fetching and organizing email data from Microsoft Graph API
-class EmailDataSource {
+final class EmailDataSource: @unchecked Sendable {
     private let graphAPIService: GraphAPIService
     private let storageManager: StorageManager
 

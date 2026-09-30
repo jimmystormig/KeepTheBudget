@@ -89,8 +89,7 @@ struct DeviceCodeView: View {
                             .font(.system(size: 24, weight: .bold, design: .monospaced))
                             .textSelection(.enabled)
                             .padding(8)
-                            .background(Color.blue.opacity(0.1))
-                            .cornerRadius(6)
+                            .goldenGateSurface(cornerRadius: 10)
 
                         Button(action: copyCode) {
                             Image(systemName: "doc.on.doc")
@@ -101,8 +100,7 @@ struct DeviceCodeView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding()
-                .background(Color.gray.opacity(0.05))
-                .cornerRadius(8)
+                .goldenGateSurface(cornerRadius: 16)
 
                 if isPolling {
                     HStack {
@@ -137,7 +135,7 @@ struct DeviceCodeView: View {
             Spacer()
         }
         .padding(30)
-        .frame(width: 450, height: 450)
+        .frame(minWidth: 450, minHeight: 450)
     }
 
     private func startDeviceCodeFlow() {

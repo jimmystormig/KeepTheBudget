@@ -27,78 +27,24 @@ struct SettingsView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Custom tab bar
-            HStack(spacing: 0) {
-                TabButton(title: "Goals", icon: "target", isSelected: selectedTab == 0) {
-                    selectedTab = 0
-                }
-                TabButton(title: "Calendar", icon: "calendar", isSelected: selectedTab == 1) {
-                    selectedTab = 1
-                }
-                TabButton(title: "Account", icon: "person.circle", isSelected: selectedTab == 2) {
-                    selectedTab = 2
-                }
-                TabButton(title: "Configuration", icon: "gear", isSelected: selectedTab == 3) {
-                    selectedTab = 3
-                }
-                TabButton(title: "About", icon: "info.circle", isSelected: selectedTab == 4) {
-                    selectedTab = 4
-                }
-                TabButton(title: "AI", icon: "brain", isSelected: selectedTab == 5) {
-                    selectedTab = 5
-                }
-            }
-            .frame(height: 44)
-            .background(Color(NSColor.controlBackgroundColor))
-
-            Divider()
-
-            // Content area
-            Group {
-                switch selectedTab {
-                case 0:
-                    GoalsTab(preferences: $preferences, storageManager: storageManager, timeSummary: timeSummary)
-                case 1:
-                    CalendarTab(onCalendarChange: onCalendarChange)
-                case 2:
-                    AccountTab(authManager: authManager, graphAPIService: graphAPIService)
-                case 3:
-                    ConfigurationTab(storageManager: storageManager, authManager: authManager)
-                case 4:
-                    AboutTab()
-                case 5:
-                    AISettingsTab(storageManager: storageManager)
-                default:
-                    GoalsTab(preferences: $preferences, storageManager: storageManager, timeSummary: timeSummary)
-                }
-            }
+        TabView(selection: $selectedTab) {
+            GoalsTab(preferences: $preferences, storageManager: storageManager, timeSummary: timeSummary)
+                .tabItem { Label("Goals", systemImage: "target") }
+                .tag(0)
+            CalendarTab(onCalendarChange: onCalendarChange)
+                .tabItem { Label("Calendar", systemImage: "calendar") }
+                .tag(1)
+            AccountTab(authManager: authManager, graphAPIService: graphAPIService)
+                .tabItem { Label("Account", systemImage: "person.circle") }
+                .tag(2)
+            ConfigurationTab(storageManager: storageManager, authManager: authManager)
+                .tabItem { Label("Configuration", systemImage: "gear") }
+                .tag(3)
+            AboutTab()
+                .tabItem { Label("About", systemImage: "info.circle") }
+                .tag(4)
         }
-        .frame(width: 600, height: 500)
-    }
-}
-
-// MARK: - Tab Button
-
-struct TabButton: View {
-    let title: String
-    let icon: String
-    let isSelected: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: 4) {
-                Image(systemName: icon)
-                    .font(.system(size: 16))
-                Text(title)
-                    .font(.system(size: 11))
-            }
-            .frame(maxWidth: .infinity)
-            .foregroundColor(isSelected ? .blue : .secondary)
-        }
-        .buttonStyle(.plain)
-        .contentShape(Rectangle())
+        .frame(minWidth: 600, minHeight: 500)
     }
 }
 
@@ -228,9 +174,6 @@ struct GoalsTab: View {
                         }
 
                         Toggle("Weekdays only (Mon-Fri)", isOn: $preferences.autoDailyReportWeekdaysOnly)
-                            .toggleStyle(.switch)
-
-                        Toggle("Include AI analysis", isOn: $preferences.autoDailyReportIncludeAI)
                             .toggleStyle(.switch)
 
                         Toggle("Auto-open report window", isOn: $preferences.autoDailyReportAutoOpenWindow)

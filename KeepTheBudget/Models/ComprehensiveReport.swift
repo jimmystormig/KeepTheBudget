@@ -29,7 +29,7 @@ struct ComprehensiveReport {
         self.endDate = endDate
     }
 
-    /// Combined text export for clipboard and AI analysis
+    /// Combined text export for the clipboard
     func toText() -> String {
         var text = """
         COMPREHENSIVE WORK REPORT

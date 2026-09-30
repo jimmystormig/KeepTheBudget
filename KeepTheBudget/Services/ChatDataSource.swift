@@ -7,7 +7,7 @@
 
 import Foundation
 
-class ChatDataSource {
+final class ChatDataSource: @unchecked Sendable {
     private let graphAPIService: GraphAPIService
     private let storageManager: StorageManager
 

@@ -5,8 +5,8 @@ This file is the agent-facing working guide for `KeepTheBudget`. It consolidates
 ## 1) Project Snapshot
 
 - App type: macOS menu bar app (`SwiftUI + AppKit`) for Microsoft 365 work activity tracking.
-- Primary capabilities: calendar-based daily/weekly tracking, category-based goal filtering, weekly hierarchical reports, daily comprehensive reports (calendar+email+chat), optional Azure OpenAI analysis.
-- Stack: Swift 5.9, macOS 12.0 target, MSAL via SwiftPM, Microsoft Graph v1.0.
+- Primary capabilities: calendar-based daily/weekly tracking, category-based goal filtering, weekly hierarchical reports, and daily comprehensive reports (calendar+email+chat).
+- Stack: Swift 6, macOS 27 Golden Gate target, MSAL 2.x via SwiftPM, Microsoft Graph v1.0.
 
 ## 2) Current Architecture (Code-Accurate)
 
@@ -19,9 +19,8 @@ This file is the agent-facing working guide for `KeepTheBudget`. It consolidates
 - `KeepTheBudget/Services/UpdateScheduler.swift`: periodic refresh timer.
 - `KeepTheBudget/Services/EmailDataSource.swift`: groups emails into `EmailThread`.
 - `KeepTheBudget/Services/ChatDataSource.swift`: fetches/sorts chat conversations.
-- `KeepTheBudget/Services/AIReportAnalyzer.swift`: Azure OpenAI request/response handling for report analysis.
-- Models: calendar/time models (`CalendarEvent`, `TimeSummary`, `TimeReport`), communication models (`EmailMessage`, `EmailThread`, `ChatConversation`), AI models (`AIReportAnalysis`, correlation/priority types, config).
-- Views: menu bar popover (`PopoverView`), settings tabs (`SettingsView` + `AISettingsTab`), setup views (`ConfigurationSetupView`, `DeviceCodeView`, `CalendarSelectionView`), report views (`WeeklyReportView`, `DailyMeetingReportView`).
+- Models: calendar/time models (`CalendarEvent`, `TimeSummary`, `TimeReport`) and communication models (`EmailMessage`, `EmailThread`, `ChatConversation`).
+- Views: menu bar popover (`PopoverView`), settings tabs (`SettingsView`), setup views (`ConfigurationSetupView`, `DeviceCodeView`, `CalendarSelectionView`), report views (`WeeklyReportView`, `DailyMeetingReportView`).
 
 ## 3) Launch and Data Flow
 
@@ -33,7 +32,7 @@ This file is the agent-facing working guide for `KeepTheBudget`. It consolidates
 7. Mark services initialized, start scheduler, run initial refresh.
 8. Refresh fetches user profile + daily/weekly events, filters to organizer == current user, computes totals/category metrics, and updates menu UI.
 9. Weekly report uses calendar events only.
-10. Daily meeting report fetches calendar + email + chats in parallel and can run AI analysis.
+10. Daily meeting report fetches calendar + email + chats in parallel.
 
 ## 4) Graph + Scopes (Current)
 
@@ -58,7 +57,7 @@ This file is the agent-facing working guide for `KeepTheBudget`. It consolidates
 
 ## 7) Important Config/Storage Behavior
 
-- Secrets/config in Keychain: access token, refresh token, token expiry, MSAL Client ID/Tenant ID, Azure OpenAI endpoint/key/deployment.
+- Secrets/config in Keychain: access token, refresh token, token expiry, and MSAL Client ID/Tenant ID.
 - `StorageManager` uses a keychain configuration bundle for single-shot startup reads to reduce repeated keychain prompts.
 - User preferences in `UserDefaults` (goals, selected calendar, refresh interval, category filtering options).
 
@@ -79,7 +78,7 @@ xcodegen generate
 
 `CLAUDE.md` is mostly accurate on core auth/threading architecture, but these parts are outdated versus current code:
 
-- App scope has expanded beyond calendar-only tracking: email and Teams chat ingestion exists (`EmailDataSource`, `ChatDataSource`, Graph email/chat endpoints), and AI analysis exists (Azure OpenAI config + analyzer + UI).
+- App scope has expanded beyond calendar-only tracking: email and Teams chat ingestion exists (`EmailDataSource`, `ChatDataSource`, Graph email/chat endpoints).
 - Scope list changed:
 - `GraphConstants.scopes` now includes `Mail.Read` and `Chat.Read`.
 - `TimeSummary` status values are `.normal` / `.overGoal` (not `underGoal/onTarget/overGoal`).
@@ -90,7 +89,8 @@ xcodegen generate
 
 - Prefer updating `project.yml` for project config changes, then regenerate Xcode project.
 - Keep AppKit window creation and SwiftUI-to-`NSHostingView` bridging on main thread.
+- Use standard SwiftUI and AppKit controls so Golden Gate supplies Liquid Glass; apply custom glass only to discrete interactive content groups.
 - Do not hardcode Client ID/Tenant ID/API keys in source.
 - Preserve organizer-based filtering unless explicitly requested otherwise.
 - When changing auth/scopes, verify interactions across `KeepTheBudget/Utilities/Constants.swift`, `KeepTheBudget/Services/AuthManager.swift`, `KeepTheBudget/Services/GraphAPIService.swift`, settings/configuration UI, and storage.
-- For report changes, verify both report paths: `KeepTheBudget/Views/Components/WeeklyReportView.swift` (`TimeReport`) and `KeepTheBudget/Views/Components/DailyMeetingReportView.swift` (`ComprehensiveReport` + optional AI analysis).
+- For report changes, verify both report paths: `KeepTheBudget/Views/Components/WeeklyReportView.swift` (`TimeReport`) and `KeepTheBudget/Views/Components/DailyMeetingReportView.swift` (`ComprehensiveReport`).

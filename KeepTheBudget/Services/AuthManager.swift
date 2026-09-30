@@ -25,7 +25,7 @@ enum AuthError: LocalizedError {
     }
 }
 
-class AuthManager {
+final class AuthManager: @unchecked Sendable {
     private let storageManager: StorageManager
     private var msalApplication: MSALPublicClientApplication?
     private var authority: MSALAuthority?
@@ -105,8 +105,13 @@ class AuthManager {
 
         let config = MSALPublicClientApplicationConfig(clientId: clientId, redirectUri: redirectUri, authority: authority)
 
+        // Keep runtime-configurable device-code sign-in working on macOS. This app
+        // does not use brokered authentication, and MSAL 2.x otherwise rejects
+        // the legacy msal{client-id} scheme as not broker-capable.
+        config.bypassRedirectURIValidation = true
+
         // Log cache configuration
-        print("   MSAL cache keychain group: \(config.cacheConfig.keychainSharingGroup ?? "(default - app's keychain)")")
+        print("   MSAL cache keychain group: \(config.cacheConfig.keychainSharingGroup)")
 
         msalApplication = try MSALPublicClientApplication(configuration: config)
 
@@ -580,7 +585,10 @@ class AuthManager {
 
     // MARK: - Interactive Authentication
 
-    func startInteractiveAuth(parentWindow: NSWindow? = nil) async throws -> String {
+    /// Starts browser-based sign-in from an on-screen application window.
+    /// MSAL 2.x requires that window so it can present and restore the auth session.
+    @MainActor
+    func startInteractiveAuth(parentWindow: NSWindow) async throws -> String {
         guard isInitialized() else {
             throw AuthError.notInitialized
         }
@@ -595,12 +603,17 @@ class AuthManager {
         print("✅ MSAL application is initialized")
         print("📋 Scopes: \(GraphConstants.scopes)")
 
-        // On macOS, MSAL uses the system browser, so no parent window is needed
-        let webviewParameters = MSALWebviewParameters()
-        webviewParameters.webviewType = .default
+        guard let parentViewController = parentWindow.contentViewController else {
+            throw NSError(
+                domain: "AuthManager",
+                code: 2,
+                userInfo: [NSLocalizedDescriptionKey: "Authentication requires a visible presentation window"]
+            )
+        }
+
+        let webviewParameters = MSALWebviewParameters(authPresentationViewController: parentViewController)
         let interactiveParameters = MSALInteractiveTokenParameters(scopes: GraphConstants.scopes, webviewParameters: webviewParameters)
 
-        print("🌐 Webview type: \(webviewParameters.webviewType.rawValue)")
         print("🚀 Calling acquireToken...")
 
         return try await withCheckedThrowingContinuation { continuation in

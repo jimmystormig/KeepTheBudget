@@ -2,7 +2,7 @@
 //  DailyMeetingReportView.swift
 //  KeepTheBudget
 //
-//  UI for daily meeting report with date/time range selection and AI analysis
+//  UI for daily meeting report with date/time range selection
 //
 
 import SwiftUI
@@ -12,12 +12,7 @@ struct DailyMeetingReportView: View {
     let defaultStartDate: Date
     let defaultEndDate: Date
     let onGenerateReport: (Date, Date) async -> ComprehensiveReport?
-    let aiAnalyzer: AIReportAnalyzer
-    let storageManager: StorageManager
     let initialReport: ComprehensiveReport?
-    let initialAIAnalysis: AIReportAnalysis?
-    let initialAIErrorMessage: String?
-    let autoRunAIOnAppear: Bool
     let onClose: () -> Void
 
     @State private var startDate: Date
@@ -38,33 +33,17 @@ struct DailyMeetingReportView: View {
     @State private var isGenerating = false
     @State private var errorMessage: String?
 
-    // AI Analysis state (lifted up to persist across collapse/expand)
-    @State private var aiAnalysis: AIReportAnalysis?
-    @State private var isAnalyzingAI = false
-    @State private var aiErrorMessage: String?
-    @State private var didRunAutoAIOnAppear = false
-
     init(
         defaultStartDate: Date,
         defaultEndDate: Date,
         onGenerateReport: @escaping (Date, Date) async -> ComprehensiveReport?,
-        aiAnalyzer: AIReportAnalyzer,
-        storageManager: StorageManager,
         initialReport: ComprehensiveReport? = nil,
-        initialAIAnalysis: AIReportAnalysis? = nil,
-        initialAIErrorMessage: String? = nil,
-        autoRunAIOnAppear: Bool = false,
         onClose: @escaping () -> Void
     ) {
         self.defaultStartDate = defaultStartDate
         self.defaultEndDate = defaultEndDate
         self.onGenerateReport = onGenerateReport
-        self.aiAnalyzer = aiAnalyzer
-        self.storageManager = storageManager
         self.initialReport = initialReport
-        self.initialAIAnalysis = initialAIAnalysis
-        self.initialAIErrorMessage = initialAIErrorMessage
-        self.autoRunAIOnAppear = autoRunAIOnAppear
         self.onClose = onClose
         self._startDate = State(initialValue: defaultStartDate)
         self._endDate = State(initialValue: defaultEndDate)
@@ -74,8 +53,9 @@ struct DailyMeetingReportView: View {
         VStack(spacing: 0) {
             // Date range selector with time pickers
             dateRangeSelectorView
-                .padding()
-                .background(Color(NSColor.controlBackgroundColor))
+                .padding(12)
+                .goldenGateSurface(cornerRadius: 20)
+                .padding([.horizontal, .top])
 
             Divider()
 
@@ -92,10 +72,11 @@ struct DailyMeetingReportView: View {
 
             // Footer with Copy and Close buttons
             footerView
-                .padding()
-                .background(Color(NSColor.controlBackgroundColor))
+                .padding(10)
+                .goldenGateSurface(cornerRadius: 20)
+                .padding([.horizontal, .bottom])
         }
-        .frame(width: 600, height: 750)
+        .frame(minWidth: 600, minHeight: 750)
         .onAppear {
             initializeOnAppear()
         }
@@ -131,6 +112,7 @@ struct DailyMeetingReportView: View {
                         Text("Generate")
                     }
                 }
+                .buttonStyle(.glassProminent)
                 .disabled(isGenerating)
             }
 
@@ -176,8 +158,7 @@ struct DailyMeetingReportView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
-        .background(Color(NSColor.controlBackgroundColor))
-        .cornerRadius(8)
+        .goldenGateSurface(cornerRadius: 16)
     }
 
     private func calendarEventsSection(_ report: TimeReport) -> some View {
@@ -228,8 +209,6 @@ struct DailyMeetingReportView: View {
             }
         }
         .padding()
-        .background(Color(NSColor.windowBackgroundColor))
-        .cornerRadius(8)
     }
 
     private func historicalWorkSection(_ report: ComprehensiveReport) -> some View {
@@ -256,7 +235,6 @@ struct DailyMeetingReportView: View {
 
             if showYesterdaySection {
                 Divider()
-                inlineYesterdayAISection()
                 calendarEventsSection(report.timeReport)
                 emailThreadsSection(report.emailThreads)
 
@@ -266,8 +244,7 @@ struct DailyMeetingReportView: View {
             }
         }
         .padding()
-        .background(Color(NSColor.windowBackgroundColor))
-        .cornerRadius(8)
+        .goldenGateSurface(cornerRadius: 20)
     }
 
     private func emailThreadsSection(_ threads: [EmailThread]) -> some View {
@@ -318,8 +295,6 @@ struct DailyMeetingReportView: View {
             }
         }
         .padding()
-        .background(Color(NSColor.windowBackgroundColor))
-        .cornerRadius(8)
     }
 
     private func chatConversationsSection(_ conversations: [ChatConversation]) -> some View {
@@ -370,8 +345,6 @@ struct DailyMeetingReportView: View {
             }
         }
         .padding()
-        .background(Color(NSColor.windowBackgroundColor))
-        .cornerRadius(8)
     }
 
     private func remainingDaySection(_ plan: RemainingDayPlan) -> some View {
@@ -404,8 +377,6 @@ struct DailyMeetingReportView: View {
                         Text("From \(formatTimestamp(plan.generatedAt)) to \(formatTimestamp(plan.endOfDay))")
                             .font(.subheadline)
                             .fontWeight(.medium)
-
-                        inlineTodayAISection()
                     }
 
                     todayCalendarSection(plan.upcomingEvents)
@@ -415,8 +386,7 @@ struct DailyMeetingReportView: View {
             }
         }
         .padding()
-        .background(Color(NSColor.windowBackgroundColor))
-        .cornerRadius(8)
+        .goldenGateSurface(cornerRadius: 20)
     }
 
     private func todayCalendarSection(_ events: [CalendarEvent]) -> some View {
@@ -537,75 +507,6 @@ struct DailyMeetingReportView: View {
         }
     }
 
-    private func inlineYesterdayAISection() -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("AI Summary")
-                .font(.headline)
-
-            if isAnalyzingAI {
-                aiLoadingView
-            } else if let aiAnalysis = aiAnalysis {
-                if !aiAnalysis.yesterdayWork.isEmpty {
-                    aiBulletSection("Yesterday's Work", aiAnalysis.yesterdayWork)
-                }
-            } else if let aiErrorMessage {
-                aiErrorView(aiErrorMessage)
-            }
-        }
-    }
-
-    private func inlineTodayAISection() -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("AI Summary")
-                .font(.headline)
-
-            if isAnalyzingAI {
-                aiLoadingView
-            } else if let aiAnalysis = aiAnalysis {
-                if !aiAnalysis.todayWork.isEmpty {
-                    aiBulletSection("What To Do Today", aiAnalysis.todayWork)
-                }
-            } else if let aiErrorMessage {
-                aiErrorView(aiErrorMessage)
-            }
-        }
-    }
-
-    private func aiBulletSection(_ title: String, _ items: [String]) -> some View {
-        let visibleItems = items
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-
-        return VStack(alignment: .leading, spacing: 6) {
-            Text(title)
-                .font(.headline)
-
-            ForEach(Array(visibleItems.enumerated()), id: \.offset) { index, item in
-                Text("\(index + 1). \(item)")
-                    .font(.body)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        }
-        .padding(10)
-        .background(Color(NSColor.controlBackgroundColor))
-        .cornerRadius(8)
-    }
-
-    private var aiLoadingView: some View {
-        HStack(spacing: 8) {
-            ProgressView()
-                .scaleEffect(0.8)
-            Text("Generating AI summary...")
-                .foregroundColor(.secondary)
-        }
-    }
-
-    private func aiErrorView(_ message: String) -> some View {
-        Text(message)
-            .font(.caption)
-            .foregroundColor(.secondary)
-    }
-
     // MARK: - Loading and Empty States
 
     private var loadingView: some View {
@@ -655,11 +556,13 @@ struct DailyMeetingReportView: View {
                 }
             }
             .disabled(report == nil || isGenerating)
+            .buttonStyle(.glass)
 
             Spacer()
 
             Button("Close", action: onClose)
                 .keyboardShortcut(.cancelAction)
+                .buttonStyle(.glass)
         }
     }
 
@@ -677,13 +580,6 @@ struct DailyMeetingReportView: View {
                 expandedChats = Set(chats.prefix(5).map { $0.id })
             }
 
-            aiAnalysis = initialAIAnalysis
-            aiErrorMessage = initialAIErrorMessage
-
-            if initialAIAnalysis == nil && !didRunAutoAIOnAppear {
-                didRunAutoAIOnAppear = true
-                runAIAnalysisForCurrentReport()
-            }
             return
         }
 
@@ -700,11 +596,6 @@ struct DailyMeetingReportView: View {
             errorMessage = nil
             report = nil
 
-            // Clear previous AI analysis when generating new report
-            aiAnalysis = nil
-            isAnalyzingAI = false
-            aiErrorMessage = nil
-
             print("   ⏳ Calling onGenerateReport callback...")
 
             let result = await onGenerateReport(startDate, endDate)
@@ -720,7 +611,6 @@ struct DailyMeetingReportView: View {
                 if let chats = result.chatConversations {
                     expandedChats = Set(chats.prefix(5).map { $0.id })
                 }
-                runAIAnalysisForCurrentReport()
             } else {
                 print("   ❌ Report is nil! Check error dialog for details.")
                 // Error dialog will be shown by AppDelegate
@@ -729,34 +619,6 @@ struct DailyMeetingReportView: View {
 
             isGenerating = false
             print("   🏁 Generation complete")
-        }
-    }
-
-    private func runAIAnalysisForCurrentReport() {
-        guard let report = report else { return }
-        let reportText = report.toText()
-        guard !reportText.isEmpty else {
-            aiErrorMessage = "No report data to analyze"
-            return
-        }
-
-        isAnalyzingAI = true
-        aiErrorMessage = nil
-        aiAnalysis = nil
-
-        Task {
-            do {
-                let result = try await aiAnalyzer.analyzeReport(reportText)
-                await MainActor.run {
-                    aiAnalysis = result
-                    isAnalyzingAI = false
-                }
-            } catch {
-                await MainActor.run {
-                    aiErrorMessage = error.localizedDescription
-                    isAnalyzingAI = false
-                }
-            }
         }
     }
 

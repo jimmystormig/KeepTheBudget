@@ -23,7 +23,6 @@ struct AppPreferences: Codable, Equatable {
     var autoDailyReportHour: Int = 8
     var autoDailyReportMinute: Int = 45
     var autoDailyReportWeekdaysOnly: Bool = true
-    var autoDailyReportIncludeAI: Bool = true
     var autoDailyReportAutoOpenWindow: Bool = true
     var lastAutoDailyReportRunDate: Date? = nil
 
@@ -39,7 +38,6 @@ struct AppPreferences: Codable, Equatable {
         case autoDailyReportHour
         case autoDailyReportMinute
         case autoDailyReportWeekdaysOnly
-        case autoDailyReportIncludeAI
         case autoDailyReportAutoOpenWindow
         case lastAutoDailyReportRunDate
     }
@@ -59,7 +57,6 @@ struct AppPreferences: Codable, Equatable {
         autoDailyReportHour = try container.decodeIfPresent(Int.self, forKey: .autoDailyReportHour) ?? 8
         autoDailyReportMinute = try container.decodeIfPresent(Int.self, forKey: .autoDailyReportMinute) ?? 45
         autoDailyReportWeekdaysOnly = try container.decodeIfPresent(Bool.self, forKey: .autoDailyReportWeekdaysOnly) ?? true
-        autoDailyReportIncludeAI = try container.decodeIfPresent(Bool.self, forKey: .autoDailyReportIncludeAI) ?? true
         autoDailyReportAutoOpenWindow = try container.decodeIfPresent(Bool.self, forKey: .autoDailyReportAutoOpenWindow) ?? true
         lastAutoDailyReportRunDate = try container.decodeIfPresent(Date.self, forKey: .lastAutoDailyReportRunDate)
     }
@@ -77,7 +74,6 @@ struct AppPreferences: Codable, Equatable {
         try container.encode(autoDailyReportHour, forKey: .autoDailyReportHour)
         try container.encode(autoDailyReportMinute, forKey: .autoDailyReportMinute)
         try container.encode(autoDailyReportWeekdaysOnly, forKey: .autoDailyReportWeekdaysOnly)
-        try container.encode(autoDailyReportIncludeAI, forKey: .autoDailyReportIncludeAI)
         try container.encode(autoDailyReportAutoOpenWindow, forKey: .autoDailyReportAutoOpenWindow)
         try container.encodeIfPresent(lastAutoDailyReportRunDate, forKey: .lastAutoDailyReportRunDate)
     }

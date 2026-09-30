@@ -73,7 +73,8 @@ struct ChatConversationView: View {
                 .padding(.leading, 20)
             }
         }
-        .padding(.vertical, 4)
+        .padding(10)
+        .goldenGateSurface(cornerRadius: 14)
     }
 
     /// Icon based on chat type
@@ -149,8 +150,7 @@ struct ChatMessageRow: View {
             }
         }
         .padding(8)
-        .background(Color.secondary.opacity(0.05))
-        .cornerRadius(6)
+        .goldenGateSurface(cornerRadius: 10)
     }
 
     /// Format message timestamp relative to current date

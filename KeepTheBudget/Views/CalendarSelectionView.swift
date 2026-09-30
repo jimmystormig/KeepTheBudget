@@ -59,7 +59,7 @@ struct CalendarSelectionView: View {
             Spacer()
         }
         .padding(30)
-        .frame(width: 400, height: 500)
+        .frame(minWidth: 400, minHeight: 500)
         .onAppear {
             guard !isInitialized else { return }
             isInitialized = true
@@ -93,8 +93,7 @@ struct CalendarRow: View {
             }
         }
         .padding()
-        .background(isSelected ? Color.blue.opacity(0.1) : Color.gray.opacity(0.05))
-        .cornerRadius(8)
+        .goldenGateSurface(cornerRadius: 12)
         .overlay(
             RoundedRectangle(cornerRadius: 8)
                 .stroke(isSelected ? Color.blue : Color.clear, lineWidth: 2)

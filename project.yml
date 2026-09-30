@@ -2,17 +2,17 @@ name: KeepTheBudget
 options:
   bundleIdPrefix: com.keepthebudget
   deploymentTarget:
-    macOS: "12.0"
+    macOS: "27.0"
   developmentLanguage: en
 settings:
-  SWIFT_VERSION: 5.9
-  MACOSX_DEPLOYMENT_TARGET: 12.0
+  SWIFT_VERSION: 6.0
+  MACOSX_DEPLOYMENT_TARGET: 27.0
   MARKETING_VERSION: 1.0.0
   CURRENT_PROJECT_VERSION: 1
 packages:
   MSAL:
     url: https://github.com/AzureAD/microsoft-authentication-library-for-objc
-    from: 1.3.0
+    from: 2.14.1
 targets:
   KeepTheBudget:
     type: application
@@ -29,7 +29,7 @@ targets:
         ENABLE_HARDENED_RUNTIME: YES
         GENERATE_INFOPLIST_FILE: NO
         SWIFT_EMIT_LOC_STRINGS: YES
-        SWIFT_VERSION: 5.9
+        SWIFT_VERSION: 6.0
     dependencies:
       - package: MSAL
         product: MSAL

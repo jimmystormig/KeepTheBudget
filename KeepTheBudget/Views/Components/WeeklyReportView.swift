@@ -39,8 +39,9 @@ struct WeeklyReportView: View {
         VStack(spacing: 0) {
             // Date range selector
             dateRangeSelectorView
-                .padding()
-                .background(Color(NSColor.controlBackgroundColor))
+                .padding(12)
+                .goldenGateSurface(cornerRadius: 20)
+                .padding([.horizontal, .top])
 
             Divider()
 
@@ -57,10 +58,11 @@ struct WeeklyReportView: View {
 
             // Footer with Copy and Close buttons
             footerView
-                .padding()
-                .background(Color(NSColor.controlBackgroundColor))
+                .padding(10)
+                .goldenGateSurface(cornerRadius: 20)
+                .padding([.horizontal, .bottom])
         }
-        .frame(width: 550, height: 650)
+        .frame(minWidth: 550, minHeight: 650)
         .onAppear {
             generateReportForCurrentDates()
         }
@@ -92,6 +94,7 @@ struct WeeklyReportView: View {
                     Text("Generate")
                 }
             }
+            .buttonStyle(.glassProminent)
             .disabled(isGenerating)
         }
     }
@@ -143,8 +146,7 @@ struct WeeklyReportView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
-        .background(Color(NSColor.controlBackgroundColor))
-        .cornerRadius(8)
+        .goldenGateSurface(cornerRadius: 16)
     }
 
     // MARK: - Loading and Empty States
@@ -181,11 +183,13 @@ struct WeeklyReportView: View {
                 }
             }
             .disabled(report == nil || isGenerating)
+            .buttonStyle(.glass)
 
             Spacer()
 
             Button("Close", action: onClose)
                 .keyboardShortcut(.cancelAction)
+                .buttonStyle(.glass)
         }
     }
 
@@ -288,7 +292,8 @@ struct FirstLevelGroupView: View {
                 .padding(.leading, 24)
             }
         }
-        .padding(.vertical, 8)
+        .padding(12)
+        .goldenGateSurface(cornerRadius: 16)
     }
 }
 

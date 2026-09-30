@@ -17,12 +17,9 @@ struct KeychainConfigurationBundle: Codable {
     let accessToken: String?
     let refreshToken: String?
     let tokenExpiry: String?
-    let azureOpenAIEndpoint: String?
-    let azureOpenAIApiKey: String?
-    let azureOpenAIDeploymentName: String?
 }
 
-class KeychainHelper {
+final class KeychainHelper: @unchecked Sendable {
     static let shared = KeychainHelper()
 
     private let service: String

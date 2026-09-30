@@ -89,7 +89,7 @@ struct ConfigurationSetupView: View {
             Spacer()
         }
         .padding(30)
-        .frame(width: 500, height: 500)
+        .frame(minWidth: 500, minHeight: 500)
     }
 
     private func saveConfiguration() {

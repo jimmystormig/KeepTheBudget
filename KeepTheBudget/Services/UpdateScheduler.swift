@@ -7,12 +7,13 @@
 
 import Foundation
 
+@MainActor
 class UpdateScheduler {
     private var timer: Timer?
     private let intervalMinutes: Int
-    private let updateHandler: () async -> Void
+    private let updateHandler: @MainActor () async -> Void
 
-    init(intervalMinutes: Int, updateHandler: @escaping () async -> Void) {
+    init(intervalMinutes: Int, updateHandler: @escaping @MainActor () async -> Void) {
         self.intervalMinutes = intervalMinutes
         self.updateHandler = updateHandler
     }
@@ -48,7 +49,4 @@ class UpdateScheduler {
         }
     }
 
-    deinit {
-        stop()
-    }
 }
