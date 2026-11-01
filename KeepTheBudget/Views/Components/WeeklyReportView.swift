@@ -258,24 +258,19 @@ struct FirstLevelGroupView: View {
     let isExpanded: Bool
     let onToggle: () -> Void
 
+    /// Second-level groups start expanded; kept here so the choice survives collapsing this group
+    @State private var collapsedSecondLevel: Set<UUID> = []
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             // Header with chevron
             Button(action: onToggle) {
-                HStack {
-                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                        .reportFont(.caption)
-                        .foregroundStyle(Color.reportSecondary)
-                        .frame(width: 12)
+                HStack(alignment: .firstTextBaseline) {
+                    ReportChevron(isExpanded: isExpanded)
 
-                    Text(group.name)
+                    ReportRowText(minutes: group.totalMinutes, name: group.name)
                         .reportFont(.title3)
                         .fontWeight(.semibold)
-                        .foregroundColor(.primary)
-
-                    Text("(\(TimeFormatter.format(minutes: group.totalMinutes)))")
-                        .reportFont(.body)
-                        .foregroundStyle(Color.reportSecondary)
 
                     Spacer()
                 }
@@ -287,7 +282,11 @@ struct FirstLevelGroupView: View {
             if isExpanded {
                 VStack(alignment: .leading, spacing: 12) {
                     ForEach(group.secondLevelGroups) { secondLevel in
-                        SecondLevelGroupView(group: secondLevel)
+                        SecondLevelGroupView(
+                            group: secondLevel,
+                            isExpanded: !collapsedSecondLevel.contains(secondLevel.id),
+                            onToggle: { toggleSecondLevel(secondLevel.id) }
+                        )
                     }
                 }
                 .padding(.leading, 24)
@@ -296,36 +295,114 @@ struct FirstLevelGroupView: View {
         .padding(12)
         .goldenGateSurface(cornerRadius: 16)
     }
+
+    private func toggleSecondLevel(_ id: UUID) {
+        if collapsedSecondLevel.contains(id) {
+            collapsedSecondLevel.remove(id)
+        } else {
+            collapsedSecondLevel.insert(id)
+        }
+    }
 }
 
 // MARK: - Second Level Group View
 
 struct SecondLevelGroupView: View {
     let group: SecondLevelGroup
+    let isExpanded: Bool
+    let onToggle: () -> Void
+
+    private var hasChildren: Bool {
+        !group.descriptions.isEmpty || !group.thirdLevelGroups.isEmpty
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            // Second level name and time
-            HStack {
-                Text("- \(group.name)")
-                    .reportFont(.body)
-                    .fontWeight(.medium)
+            // Header with chevron (only clickable when there is something to show)
+            Button(action: onToggle) {
+                HStack(alignment: .firstTextBaseline) {
+                    ReportChevron(isExpanded: isExpanded)
+                        .opacity(hasChildren ? 1 : 0)
 
-                Text("(\(TimeFormatter.format(minutes: group.roundedMinutes)))")
-                    .reportFont(.body)
-                    .foregroundStyle(Color.reportSecondary)
+                    ReportRowText(minutes: group.roundedMinutes, name: group.name)
+                        .reportFont(.body)
+                        .fontWeight(.medium)
+
+                    Spacer()
+                }
+                .contentShape(Rectangle())
             }
+            .buttonStyle(PlainButtonStyle())
+            .disabled(!hasChildren)
 
-            // Descriptions as bullet points
-            if !group.descriptions.isEmpty {
-                VStack(alignment: .leading, spacing: 2) {
-                    ForEach(group.descriptions, id: \.self) { description in
-                        Text("• \(description)")
-                            .reportFont(.body)
-                            .foregroundStyle(Color.reportSecondary)
+            if isExpanded && hasChildren {
+                VStack(alignment: .leading, spacing: 6) {
+                    ReportDescriptionList(descriptions: group.descriptions)
+
+                    ForEach(group.thirdLevelGroups) { thirdLevel in
+                        ThirdLevelGroupView(group: thirdLevel)
                     }
                 }
+                .padding(.leading, 20)
+            }
+        }
+    }
+}
+
+// MARK: - Third Level Group View
+
+struct ThirdLevelGroupView: View {
+    let group: ThirdLevelGroup
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            ReportRowText(minutes: group.roundedMinutes, name: group.name)
+                .reportFont(.body)
+
+            ReportDescriptionList(descriptions: group.descriptions)
                 .padding(.leading, 12)
+        }
+    }
+}
+
+// MARK: - Shared Row Parts
+
+/// Group name preceded by its time in gray, as one text so long names wrap naturally
+private struct ReportRowText: View {
+    let minutes: Int
+    let name: String
+
+    var body: some View {
+        let time = Text(TimeFormatter.format(minutes: minutes))
+            .foregroundStyle(Color.reportSecondary)
+        Text("\(time) \(name)")
+            .foregroundColor(.primary)
+    }
+}
+
+private struct ReportChevron: View {
+    let isExpanded: Bool
+
+    var body: some View {
+        Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+            .reportFont(.caption)
+            .foregroundStyle(Color.reportSecondary)
+            .frame(width: 12)
+    }
+}
+
+/// Descriptions as bullet points
+private struct ReportDescriptionList: View {
+    let descriptions: [String]
+
+    var body: some View {
+        if !descriptions.isEmpty {
+            VStack(alignment: .leading, spacing: 2) {
+                ForEach(descriptions, id: \.self) { description in
+                    Text("• \(description)")
+                        .reportFont(.body)
+                        .foregroundStyle(Color.reportSecondary)
+                }
             }
         }
     }

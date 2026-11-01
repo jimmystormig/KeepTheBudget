@@ -12,6 +12,10 @@ import Foundation
 class TimeReportGenerator {
     private let timeCalculator: TimeCalculator
 
+    /// Groups with at most this many (unrounded) minutes are merged into "Blandat"
+    private let blandatThresholdMinutes = 60
+    private let blandatName = "Blandat"
+
     init(timeCalculator: TimeCalculator) {
         self.timeCalculator = timeCalculator
     }
@@ -19,16 +23,15 @@ class TimeReportGenerator {
     /// Generate hierarchical report from events with grouping and rounding
     func generateReport(from events: [CalendarEvent], startDate: Date, endDate: Date) -> TimeReport {
         // Step 1: Parse all events into parts
-        let parsedEvents = events.compactMap { event -> (EventParts, Int)? in
+        let parsedEvents = events.compactMap { event -> ParsedEvent? in
             guard let parts = parseEventSubject(event.subject) else { return nil }
-            let minutes = event.durationMinutes
-            return (parts, minutes)
+            return ParsedEvent(parts: parts, minutes: event.durationMinutes)
         }
 
         // Step 2: Group by first level
-        var firstLevelDict: [String: [(EventParts, Int)]] = [:]
-        for (parts, minutes) in parsedEvents {
-            firstLevelDict[parts.firstLevel, default: []].append((parts, minutes))
+        var firstLevelDict: [String: [ParsedEvent]] = [:]
+        for event in parsedEvents {
+            firstLevelDict[event.parts.firstLevel, default: []].append(event)
         }
 
         // Step 3: Process each first-level group
@@ -36,76 +39,33 @@ class TimeReportGenerator {
 
         for (firstLevelName, firstLevelEvents) in firstLevelDict {
             // Group by second level
-            var secondLevelDict: [String: [(descriptions: [String], minutes: Int)]] = [:]
-
-            for (parts, minutes) in firstLevelEvents {
-                let secondLevelName = parts.secondLevel.isEmpty ? "(No category)" : parts.secondLevel
-                secondLevelDict[secondLevelName, default: []].append((parts.descriptions, minutes))
+            var secondLevelDict: [String: [ParsedEvent]] = [:]
+            for event in firstLevelEvents {
+                let secondLevelName = event.parts.secondLevel.isEmpty ? "(No category)" : event.parts.secondLevel
+                secondLevelDict[secondLevelName, default: []].append(event)
             }
 
-            // Step 4: Calculate original totals for each second-level group
-            var secondLevelTotals: [(name: String, originalMinutes: Int, descriptions: [String])] = []
-
-            for (secondLevelName, items) in secondLevelDict {
-                let totalMinutes = items.reduce(0) { $0 + $1.minutes }
-                let allDescriptions = items.flatMap { $0.descriptions }.reduce(into: [String]()) { result, desc in
-                    if !result.contains(desc) { result.append(desc) }
-                }
-                secondLevelTotals.append((secondLevelName, totalMinutes, allDescriptions))
+            // Step 4: Move small second-level groups to "Blandat" - format as "{SecondLevelName} - {third-level names}"
+            let split = splitSmall(Array(secondLevelDict), minutes: { totalMinutes($0.value) }) { name, events in
+                let thirdLevelNames = unique(events.map { $0.parts.thirdLevel }.filter { !$0.isEmpty })
+                return thirdLevelNames.isEmpty ? name : "\(name) - \(thirdLevelNames.joined(separator: ", "))"
             }
 
-            // Step 5: Move small groups (≤60 min) to "Blandat"
-            var regularGroups: [(name: String, minutes: Int, descriptions: [String])] = []
-            var blandatDescriptions: [String] = []
-            var blandatMinutes = 0
+            // Step 5: Build regular second-level groups (grouped and rounded on third level)
+            var secondLevelGroupsList = split.kept.map { buildSecondLevelGroup(name: $0.key, events: $0.value) }
 
-            for (name, originalMinutes, descriptions) in secondLevelTotals {
-                if originalMinutes <= 60 {
-                    // Move to Blandat - format as "{SecondLevelName} - {descriptions}"
-                    blandatMinutes += originalMinutes
-
-                    let formattedDescription: String
-                    if descriptions.isEmpty {
-                        formattedDescription = name
-                    } else {
-                        formattedDescription = "\(name) - \(descriptions.joined(separator: ", "))"
-                    }
-                    blandatDescriptions.append(formattedDescription)
-                } else {
-                    regularGroups.append((name, originalMinutes, descriptions))
-                }
-            }
-
-            // Step 6: Round all times to nearest 30 minutes
-            var secondLevelGroupsList: [SecondLevelGroup] = []
-
-            for (name, minutes, descriptions) in regularGroups {
-                let rounded = roundUpToNearest30(minutes)
+            if split.blandatMinutes > 0 {
                 secondLevelGroupsList.append(SecondLevelGroup(
-                    name: name,
-                    descriptions: descriptions,
-                    roundedMinutes: rounded
+                    name: blandatName,
+                    descriptions: split.blandatLines,
+                    thirdLevelGroups: [],
+                    roundedMinutes: roundUpToNearest30(split.blandatMinutes)
                 ))
             }
 
-            // Add Blandat group if it has content
-            if blandatMinutes > 0 {
-                let rounded = roundUpToNearest30(blandatMinutes)
-                secondLevelGroupsList.append(SecondLevelGroup(
-                    name: "Blandat",
-                    descriptions: blandatDescriptions,
-                    roundedMinutes: rounded
-                ))
-            }
+            secondLevelGroupsList.sort(by: blandatLast(\.name, \.roundedMinutes))
 
-            // Sort second-level groups by time descending, but put Blandat last
-            secondLevelGroupsList.sort { left, right in
-                if left.name == "Blandat" { return false }
-                if right.name == "Blandat" { return true }
-                return left.roundedMinutes > right.roundedMinutes
-            }
-
-            // Step 7: Calculate first-level total (sum of rounded second-level times)
+            // Step 6: Calculate first-level total (sum of rounded second-level times)
             let firstLevelTotal = secondLevelGroupsList.reduce(0) { $0 + $1.roundedMinutes }
 
             firstLevelGroups.append(FirstLevelGroup(
@@ -129,8 +89,103 @@ class TimeReportGenerator {
         )
     }
 
+    /// Group a second-level group's events by third level, merging small ones into "Blandat"
+    /// Events without a third level count toward the second-level total without a row of their own
+    private func buildSecondLevelGroup(name: String, events: [ParsedEvent]) -> SecondLevelGroup {
+        var thirdLevelDict: [String: [ParsedEvent]] = [:]
+        var minutesWithoutThirdLevel = 0
+
+        for event in events {
+            if event.parts.thirdLevel.isEmpty {
+                minutesWithoutThirdLevel += event.minutes
+            } else {
+                thirdLevelDict[event.parts.thirdLevel, default: []].append(event)
+            }
+        }
+
+        // Move small third-level groups to "Blandat" - format as "{ThirdLevelName} - {descriptions}"
+        let split = splitSmall(Array(thirdLevelDict), minutes: { totalMinutes($0.value) }) { name, events in
+            let descriptions = unique(events.flatMap { $0.parts.descriptions })
+            return descriptions.isEmpty ? name : "\(name) - \(descriptions.joined(separator: ", "))"
+        }
+
+        // Round all times to nearest 30 minutes
+        var thirdLevelGroups = split.kept.map { name, events in
+            ThirdLevelGroup(
+                name: name,
+                descriptions: unique(events.flatMap { $0.parts.descriptions }),
+                roundedMinutes: roundUpToNearest30(totalMinutes(events))
+            )
+        }
+
+        if split.blandatMinutes > 0 {
+            thirdLevelGroups.append(ThirdLevelGroup(
+                name: blandatName,
+                descriptions: split.blandatLines,
+                roundedMinutes: roundUpToNearest30(split.blandatMinutes)
+            ))
+        }
+
+        thirdLevelGroups.sort(by: blandatLast(\.name, \.roundedMinutes))
+
+        let total = thirdLevelGroups.reduce(0) { $0 + $1.roundedMinutes }
+            + roundUpToNearest30(minutesWithoutThirdLevel)
+
+        return SecondLevelGroup(
+            name: name,
+            descriptions: [],
+            thirdLevelGroups: thirdLevelGroups,
+            roundedMinutes: total
+        )
+    }
+
+    /// Split named groups into those kept as their own row and those (≤ threshold) merged into "Blandat"
+    private func splitSmall(
+        _ groups: [(key: String, value: [ParsedEvent])],
+        minutes: ((key: String, value: [ParsedEvent])) -> Int,
+        blandatLine: (String, [ParsedEvent]) -> String
+    ) -> (kept: [(key: String, value: [ParsedEvent])], blandatLines: [String], blandatMinutes: Int) {
+        var kept: [(key: String, value: [ParsedEvent])] = []
+        var blandatLines: [String] = []
+        var blandatMinutes = 0
+
+        // Largest first so the Blandat lines read in a stable, meaningful order
+        for group in groups.sorted(by: { minutes($0) > minutes($1) }) {
+            let groupMinutes = minutes(group)
+            if groupMinutes <= blandatThresholdMinutes {
+                blandatMinutes += groupMinutes
+                blandatLines.append(blandatLine(group.key, group.value))
+            } else {
+                kept.append(group)
+            }
+        }
+
+        return (kept, blandatLines, blandatMinutes)
+    }
+
+    /// Sort by time descending, but put "Blandat" last
+    private func blandatLast<T>(_ name: KeyPath<T, String>, _ minutes: KeyPath<T, Int>) -> (T, T) -> Bool {
+        let blandatName = blandatName
+        return { left, right in
+            if left[keyPath: name] == blandatName { return false }
+            if right[keyPath: name] == blandatName { return true }
+            return left[keyPath: minutes] > right[keyPath: minutes]
+        }
+    }
+
+    private func totalMinutes(_ events: [ParsedEvent]) -> Int {
+        events.reduce(0) { $0 + $1.minutes }
+    }
+
+    /// Remove duplicates while keeping first-seen order
+    private func unique(_ values: [String]) -> [String] {
+        values.reduce(into: [String]()) { result, value in
+            if !result.contains(value) { result.append(value) }
+        }
+    }
+
     /// Parse event subject into hierarchical parts
-    /// Format: "FirstLevel - SecondLevel - Description1 - Description2"
+    /// Format: "FirstLevel - SecondLevel - ThirdLevel - Description1 - Description2"
     private func parseEventSubject(_ subject: String) -> EventParts? {
         let parts = subject.split(separator: "-").map { $0.trimmingCharacters(in: .whitespaces) }
 
@@ -138,11 +193,13 @@ class TimeReportGenerator {
 
         let firstLevel = parts[0]
         let secondLevel = parts.count > 1 ? parts[1] : ""
-        let descriptions = parts.count > 2 ? Array(parts[2...]) : []
+        let thirdLevel = parts.count > 2 ? parts[2] : ""
+        let descriptions = parts.count > 3 ? Array(parts[3...]) : []
 
         return EventParts(
             firstLevel: firstLevel,
             secondLevel: secondLevel,
+            thirdLevel: thirdLevel,
             descriptions: descriptions
         )
     }
@@ -159,5 +216,12 @@ class TimeReportGenerator {
 private struct EventParts {
     let firstLevel: String
     let secondLevel: String  // Empty string if no second part
-    let descriptions: [String]  // Third+ parts
+    let thirdLevel: String  // Empty string if no third part
+    let descriptions: [String]  // Fourth+ parts
+}
+
+/// Internal structure pairing parsed subject with event duration
+private struct ParsedEvent {
+    let parts: EventParts
+    let minutes: Int
 }

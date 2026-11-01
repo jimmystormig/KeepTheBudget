@@ -51,16 +51,26 @@ struct TimeReport {
 
         // First-level groups
         for firstLevel in firstLevelGroups {
-            output += "\(firstLevel.name) (\(TimeFormatter.format(minutes: firstLevel.totalMinutes)))\n"
+            output += "\(TimeFormatter.format(minutes: firstLevel.totalMinutes)) \(firstLevel.name)\n"
 
             // Second-level groups
             for secondLevel in firstLevel.secondLevelGroups {
-                output += "  - \(secondLevel.name) (\(TimeFormatter.format(minutes: secondLevel.roundedMinutes)))\n"
+                output += "  - \(TimeFormatter.format(minutes: secondLevel.roundedMinutes)) \(secondLevel.name)\n"
 
                 // Descriptions as bullet points
                 if !secondLevel.descriptions.isEmpty {
                     let combinedDescriptions = secondLevel.descriptions.joined(separator: ", ")
                     output += "    • \(combinedDescriptions)\n"
+                }
+
+                // Third-level groups
+                for thirdLevel in secondLevel.thirdLevelGroups {
+                    output += "    - \(TimeFormatter.format(minutes: thirdLevel.roundedMinutes)) \(thirdLevel.name)\n"
+
+                    if !thirdLevel.descriptions.isEmpty {
+                        let combinedDescriptions = thirdLevel.descriptions.joined(separator: ", ")
+                        output += "      • \(combinedDescriptions)\n"
+                    }
                 }
             }
 
@@ -79,10 +89,19 @@ struct FirstLevelGroup: Identifiable {
     let totalMinutes: Int  // Sum of rounded second-level times
 }
 
-/// Second-level grouping (e.g., "Development" or "Blandat")
+/// Second-level grouping (e.g., "Support" or "Blandat")
 struct SecondLevelGroup: Identifiable {
     let id = UUID()
     let name: String
-    let descriptions: [String]  // Third+ parts from event subjects
+    let descriptions: [String]  // Small second-level groups merged into a first-level "Blandat"
+    let thirdLevelGroups: [ThirdLevelGroup]
+    let roundedMinutes: Int  // Sum of rounded third-level times (plus rounded time without a third level)
+}
+
+/// Third-level grouping (e.g., "9039" or "Blandat")
+struct ThirdLevelGroup: Identifiable {
+    let id = UUID()
+    let name: String
+    let descriptions: [String]  // Fourth+ parts from event subjects
     let roundedMinutes: Int  // Already rounded to nearest 30 minutes
 }
