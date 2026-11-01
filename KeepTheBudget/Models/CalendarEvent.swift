@@ -35,6 +35,12 @@ struct CalendarEvent {
         return trimmed.isEmpty ? nil : trimmed
     }
 
+    /// Returns true if the given email is this event's organizer (case-insensitive).
+    /// Only user-organized events count toward time totals.
+    func isOrganized(by email: String) -> Bool {
+        organizerEmail.caseInsensitiveCompare(email) == .orderedSame
+    }
+
     /// Returns true if event subject contains " - " (required for tracking)
     var isValidForTracking: Bool {
         return subject.contains(" - ")

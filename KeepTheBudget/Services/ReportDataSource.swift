@@ -48,9 +48,7 @@ class CalendarDataSource: ReportDataSource {
         )
 
         // 4. Filter to user's own events (only filter needed)
-        let ownEvents = events.filter {
-            $0.organizerEmail.caseInsensitiveCompare(userProfile.mail) == .orderedSame
-        }
+        let ownEvents = events.filter { $0.isOrganized(by: userProfile.mail) }
 
         return ownEvents
     }

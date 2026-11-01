@@ -594,18 +594,21 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     }
 
     private func refreshData() async {
-        // Prevent concurrent refreshes
-        let wasLoading = await MainActor.run { isLoading }
+        // Prevent concurrent refreshes: check and claim in one main-actor hop
+        let wasLoading = await MainActor.run {
+            let wasLoading = isLoading
+            if !wasLoading {
+                isLoading = true
+                updatePopoverContent()
+            }
+            return wasLoading
+        }
         if wasLoading {
             print("⏭️  Skipping refresh - already in progress")
             return
         }
 
         print("🔄 refreshData called")
-        await MainActor.run {
-            isLoading = true
-            updatePopoverContent()
-        }
 
         // Ensure services are initialized before attempting refresh
         guard servicesInitialized, authManager != nil, graphAPIService != nil else {
@@ -664,8 +667,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             }
 
             // Filter own events (only filter: user must be organizer)
-            let ownDailyEvents = dailyEvents.filter { $0.organizerEmail.caseInsensitiveCompare(userProfile.mail) == .orderedSame }
-            let ownWeeklyEvents = weeklyEvents.filter { $0.organizerEmail.caseInsensitiveCompare(userProfile.mail) == .orderedSame }
+            let ownDailyEvents = dailyEvents.filter { $0.isOrganized(by: userProfile.mail) }
+            let ownWeeklyEvents = weeklyEvents.filter { $0.isOrganized(by: userProfile.mail) }
 
             print("   ✅ After organizer filter: \(ownDailyEvents.count) daily events, \(ownWeeklyEvents.count) weekly events")
 
@@ -933,7 +936,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         )
 
         // Filter to only user's own events
-        let ownEvents = events.filter { $0.organizerEmail.caseInsensitiveCompare(userProfile.mail) == .orderedSame }
+        let ownEvents = events.filter { $0.isOrganized(by: userProfile.mail) }
 
         return ownEvents
     }

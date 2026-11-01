@@ -208,12 +208,12 @@ The app uses OAuth 2.0 Device Code Flow as the primary authentication method:
 - Device code: `/oauth2/v2.0/devicecode`
 - Token: `/oauth2/v2.0/token`
 
-**Scopes** (CRITICAL):
+**Scopes** (CRITICAL, `OAuthConstants.scopes`):
 - `Calendars.Read` - Calendar events
 - `User.Read` - User profile
-- `Mail.Read` - Future features
-- `Chat.Read` - Future features
-- `offline_access` - **REQUIRED for refresh tokens**
+- `Mail.Read` - Email in the daily report
+- `Chat.Read` - Teams chats in the daily report
+- `offline_access` - **REQUIRED for refresh tokens** (device code flow only; MSAL adds it itself, so `GraphConstants.scopes` omits it)
 
 ### MSAL Fallback
 
@@ -243,11 +243,12 @@ Events are filtered server-side with OData and client-side:
 // Server-side: Date range filter
 $filter=start/dateTime ge '2026-01-20T00:00:00' and end/dateTime le '2026-01-20T23:59:59'
 
-// Client-side: Organizer filter (AppDelegate.refreshData())
-let ownEvents = events.filter {
-    $0.organizerEmail.caseInsensitiveCompare(userProfile.mail) == .orderedSame
-}
+// Client-side: Organizer filter (CalendarEvent.isOrganized(by:)), used by
+// AppDelegate.refreshData(), AppDelegate.fetchEventsForReport() and ReportDataSource
+let ownEvents = events.filter { $0.isOrganized(by: userProfile.mail) }
 ```
+
+Change the organizer rule only in `CalendarEvent.isOrganized(by:)`.
 
 **Critical**: Only user-organized events count toward time totals.
 
@@ -283,7 +284,7 @@ Graph API returns max 100 events per page. `GraphAPIService.fetchEvents()` handl
 - Graph API endpoints and scopes only
 - OAuth endpoints for device code flow
 - **NO client ID or tenant ID** (removed for security)
-- `GraphConstants.scopes`: `["Calendars.Read", "User.Read"]`
+- `GraphConstants.scopes`: `["Calendars.Read", "User.Read", "Mail.Read", "Chat.Read"]` (MSAL; no `offline_access`)
 - `OAuthConstants.scopes`: Includes `offline_access` for refresh tokens
 
 ### Info.plist
@@ -399,9 +400,14 @@ To test immediate refresh:
 
 ### Concurrency Guards
 
-`refreshData()` has built-in guard against concurrent refreshes:
+`refreshData()` has built-in guard against concurrent refreshes. The check and the claim of `isLoading` happen in a single `MainActor.run` hop so two callers can't both pass:
 
 ```swift
+let wasLoading = await MainActor.run {
+    let wasLoading = isLoading
+    if !wasLoading { isLoading = true; updatePopoverContent() }
+    return wasLoading
+}
 if wasLoading {
     print("⏭️  Skipping refresh - already in progress")
     return
@@ -432,7 +438,7 @@ open /Applications/KeepTheBudget.app
 
 ## Files Not to Modify
 
-- `Package.swift` - SPM dependencies (MSAL 2.14.1+)
-- `project.yml` - XcodeGen config (regenerate Xcode project if changed)
+- `project.yml` - XcodeGen config (regenerate Xcode project if changed). Its `packages.MSAL` floor (2.14.1+) is what the Xcode build uses; the resolved pin lives in `KeepTheBudget.xcodeproj/.../swiftpm/Package.resolved`
+- `Package.swift` - SPM manifest for `swift build` only (MSAL 2.14.1+). It duplicates the MSAL floor in `project.yml`: when raising the minimum, change both together
 - `KeepTheBudget.entitlements` - Security entitlements
 - `Info.plist` - Must contain `msal{clientId}://auth` URL scheme matching configured Client ID
