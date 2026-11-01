@@ -20,18 +20,18 @@ struct ChatConversationView: View {
                 HStack(spacing: 8) {
                     // Chevron indicator
                     Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .reportFont(.caption)
+                        .foregroundStyle(Color.reportSecondary)
                         .frame(width: 12)
 
                     // Chat icon
                     Image(systemName: chatIcon)
                         .foregroundColor(chatColor)
-                        .font(.body)
+                        .reportFont(.body)
 
                     // Chat name
                     Text(conversation.displayName)
-                        .font(.body)
+                        .reportFont(.body)
                         .lineLimit(1)
 
                     Spacer()
@@ -39,10 +39,10 @@ struct ChatConversationView: View {
                     // Message count badge
                     HStack(spacing: 4) {
                         Text("\(conversation.totalMessages)")
-                            .font(.caption2)
+                            .reportFont(.caption2)
                             .foregroundColor(.purple)
                         Image(systemName: "message.fill")
-                            .font(.caption2)
+                            .reportFont(.caption2)
                             .foregroundColor(.purple)
                     }
                     .padding(.horizontal, 6)
@@ -52,8 +52,8 @@ struct ChatConversationView: View {
 
                     // Chat type badge
                     Text(conversation.chatType.rawValue)
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
+                        .reportFont(.caption2)
+                        .foregroundStyle(Color.reportSecondary)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
                         .background(Color.secondary.opacity(0.1))
@@ -110,7 +110,7 @@ struct ChatMessageRow: View {
         HStack(alignment: .top, spacing: 8) {
             // Message icon
             Image(systemName: "message.fill")
-                .font(.caption)
+                .reportFont(.caption)
                 .foregroundColor(.purple)
                 .frame(width: 16)
 
@@ -118,22 +118,22 @@ struct ChatMessageRow: View {
                 // Sender and timestamp
                 HStack {
                     Text(message.from?.safeDisplayName ?? "(System message)")
-                        .font(.caption)
+                        .reportFont(.caption)
                         .fontWeight(.medium)
 
                     Spacer()
 
                     // Timestamp
                     Text(formatTime(message.createdDateTime))
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
+                        .reportFont(.caption2)
+                        .foregroundStyle(Color.reportSecondary)
                 }
 
                 // Message body
                 if !message.displayBody.isEmpty && message.displayBody != "(Empty message)" {
                     Text(message.displayBody)
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
+                        .reportFont(.caption2)
+                        .foregroundStyle(Color.reportSecondary)
                         .fixedSize(horizontal: false, vertical: true)  // Allow full height expansion
                 }
 
@@ -141,9 +141,9 @@ struct ChatMessageRow: View {
                 if message.messageType != "message" {
                     HStack(spacing: 4) {
                         Image(systemName: "info.circle")
-                            .font(.caption2)
+                            .reportFont(.caption2)
                         Text(message.messageType)
-                            .font(.caption2)
+                            .reportFont(.caption2)
                     }
                     .foregroundColor(.orange)
                 }

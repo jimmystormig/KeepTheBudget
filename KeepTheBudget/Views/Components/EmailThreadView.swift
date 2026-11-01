@@ -20,18 +20,18 @@ struct EmailThreadView: View {
                 HStack(spacing: 8) {
                     // Chevron indicator
                     Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .reportFont(.caption)
+                        .foregroundStyle(Color.reportSecondary)
                         .frame(width: 12)
 
                     // Envelope icon
                     Image(systemName: "envelope.fill")
                         .foregroundColor(.blue)
-                        .font(.body)
+                        .reportFont(.body)
 
                     // Subject
                     Text(thread.displaySubject)
-                        .font(.body)
+                        .reportFont(.body)
                         .lineLimit(1)
 
                     Spacer()
@@ -40,24 +40,24 @@ struct EmailThreadView: View {
                     HStack(spacing: 4) {
                         if thread.sentCount > 0 {
                             Text("\(thread.sentCount)")
-                                .font(.caption2)
+                                .reportFont(.caption2)
                                 .foregroundColor(.green)
                             Image(systemName: "paperplane.fill")
-                                .font(.caption2)
+                                .reportFont(.caption2)
                                 .foregroundColor(.green)
                         }
 
                         if thread.receivedCount > 0 {
                             if thread.sentCount > 0 {
                                 Text("/")
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
+                                    .reportFont(.caption2)
+                                    .foregroundStyle(Color.reportSecondary)
                             }
                             Text("\(thread.receivedCount)")
-                                .font(.caption2)
+                                .reportFont(.caption2)
                                 .foregroundColor(.blue)
                             Image(systemName: "envelope.fill")
-                                .font(.caption2)
+                                .reportFont(.caption2)
                                 .foregroundColor(.blue)
                         }
                     }
@@ -93,7 +93,7 @@ struct EmailMessageRow: View {
         HStack(alignment: .top, spacing: 8) {
             // Direction indicator
             Image(systemName: message.isSent ? "paperplane.fill" : "envelope.fill")
-                .font(.caption)
+                .reportFont(.caption)
                 .foregroundColor(message.isSent ? .green : .blue)
                 .frame(width: 16)
 
@@ -101,17 +101,17 @@ struct EmailMessageRow: View {
                 // From/To line
                 HStack {
                     Text(message.from?.displayName ?? "(Unknown sender)")
-                        .font(.caption)
+                        .reportFont(.caption)
                         .fontWeight(.medium)
 
                     if !message.to.isEmpty {
                         Text("→")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
+                            .reportFont(.caption2)
+                            .foregroundStyle(Color.reportSecondary)
 
                         Text(message.to.map { $0.displayName }.joined(separator: ", "))
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
+                            .reportFont(.caption2)
+                            .foregroundStyle(Color.reportSecondary)
                             .lineLimit(1)
                     }
 
@@ -119,22 +119,22 @@ struct EmailMessageRow: View {
 
                     // Timestamp
                     Text(formatTime(message.receivedDateTime))
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
+                        .reportFont(.caption2)
+                        .foregroundStyle(Color.reportSecondary)
                 }
 
                 // Subject (if present and not empty)
                 if let subject = message.subject, !subject.isEmpty {
                     Text(subject)
-                        .font(.caption)
+                        .reportFont(.caption)
                         .lineLimit(1)
                 }
 
                 // Body preview
                 if !message.safeBodyPreview.isEmpty {
                     Text(message.safeBodyPreview)
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
+                        .reportFont(.caption2)
+                        .foregroundStyle(Color.reportSecondary)
                         .lineLimit(2)
                 }
 
@@ -142,9 +142,9 @@ struct EmailMessageRow: View {
                 if message.hasAttachments {
                     HStack(spacing: 4) {
                         Image(systemName: "paperclip")
-                            .font(.caption2)
+                            .reportFont(.caption2)
                         Text("Has attachments")
-                            .font(.caption2)
+                            .reportFont(.caption2)
                     }
                     .foregroundColor(.orange)
                 }

@@ -77,6 +77,7 @@ struct DailyMeetingReportView: View {
                 .padding([.horizontal, .bottom])
         }
         .frame(minWidth: 600, minHeight: 750)
+        .reportZoomable()
         .onAppear {
             initializeOnAppear()
         }
@@ -87,18 +88,18 @@ struct DailyMeetingReportView: View {
     private var dateRangeSelectorView: some View {
         VStack(spacing: 12) {
             Text("Daily Meeting Report")
-                .font(.headline)
+                .reportFont(.headline)
 
             HStack(spacing: 12) {
                 Text("From:")
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(Color.reportSecondary)
 
                 DatePicker("", selection: $startDate, displayedComponents: [.date, .hourAndMinute])
                     .labelsHidden()
                     .frame(width: 180)
 
                 Text("To:")
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(Color.reportSecondary)
 
                 DatePicker("", selection: $endDate, displayedComponents: [.date, .hourAndMinute])
                     .labelsHidden()
@@ -118,8 +119,8 @@ struct DailyMeetingReportView: View {
 
             // Helpful hint
             Text("Defaults to 09:00 last workday → 09:00 today")
-                .font(.caption)
-                .foregroundColor(.secondary)
+                .reportFont(.caption)
+                .foregroundStyle(Color.reportSecondary)
         }
     }
 
@@ -145,14 +146,14 @@ struct DailyMeetingReportView: View {
     private func reportHeaderView(_ report: TimeReport) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(formatDateRange(start: report.startDate, end: report.endDate))
-                .font(.title3)
+                .reportFont(.title3)
                 .fontWeight(.semibold)
 
             HStack {
                 Text("Total:")
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(Color.reportSecondary)
                 Text(TimeFormatter.format(minutes: report.totalMinutes))
-                    .font(.title3)
+                    .reportFont(.title3)
                     .fontWeight(.semibold)
             }
         }
@@ -167,19 +168,19 @@ struct DailyMeetingReportView: View {
             Button(action: { showCalendarSection.toggle() }) {
                 HStack {
                     Image(systemName: showCalendarSection ? "chevron.down" : "chevron.right")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .reportFont(.caption)
+                        .foregroundStyle(Color.reportSecondary)
                         .frame(width: 12)
 
                     Image(systemName: "calendar")
                         .foregroundColor(.blue)
                     Text("Calendar Events")
-                        .font(.headline)
+                        .reportFont(.headline)
                     Spacer()
                     if !report.firstLevelGroups.isEmpty {
                         Text("\(report.firstLevelGroups.count) groups")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                            .reportFont(.caption)
+                            .foregroundStyle(Color.reportSecondary)
                     }
                 }
                 .contentShape(Rectangle())
@@ -192,7 +193,7 @@ struct DailyMeetingReportView: View {
                 // First-level groups
                 if report.firstLevelGroups.isEmpty {
                     Text("No events found in selected date range")
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(Color.reportSecondary)
                         .frame(maxWidth: .infinity, alignment: .center)
                         .padding()
                 } else {
@@ -216,18 +217,18 @@ struct DailyMeetingReportView: View {
             Button(action: { showYesterdaySection.toggle() }) {
                 HStack {
                     Image(systemName: showYesterdaySection ? "chevron.down" : "chevron.right")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .reportFont(.caption)
+                        .foregroundStyle(Color.reportSecondary)
                         .frame(width: 12)
 
                     Image(systemName: "clock.arrow.circlepath")
                         .foregroundColor(.orange)
                     Text("Yesterday's Work")
-                        .font(.headline)
+                        .reportFont(.headline)
                     Spacer()
                     Text(TimeFormatter.format(minutes: report.timeReport.totalMinutes))
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .reportFont(.caption)
+                        .foregroundStyle(Color.reportSecondary)
                 }
                 .contentShape(Rectangle())
             }
@@ -253,19 +254,19 @@ struct DailyMeetingReportView: View {
             Button(action: { showEmailSection.toggle() }) {
                 HStack {
                     Image(systemName: showEmailSection ? "chevron.down" : "chevron.right")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .reportFont(.caption)
+                        .foregroundStyle(Color.reportSecondary)
                         .frame(width: 12)
 
                     Image(systemName: "envelope.fill")
                         .foregroundColor(.blue)
                     Text("Email Communications")
-                        .font(.headline)
+                        .reportFont(.headline)
                     Spacer()
                     if !threads.isEmpty {
                         Text("\(threads.count) threads")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                            .reportFont(.caption)
+                            .foregroundStyle(Color.reportSecondary)
                     }
                 }
                 .contentShape(Rectangle())
@@ -278,7 +279,7 @@ struct DailyMeetingReportView: View {
                 // Thread list or empty state
                 if threads.isEmpty {
                     Text("No emails in selected date range")
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(Color.reportSecondary)
                         .frame(maxWidth: .infinity, alignment: .center)
                         .padding()
                 } else {
@@ -303,19 +304,19 @@ struct DailyMeetingReportView: View {
             Button(action: { showChatSection.toggle() }) {
                 HStack {
                     Image(systemName: showChatSection ? "chevron.down" : "chevron.right")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .reportFont(.caption)
+                        .foregroundStyle(Color.reportSecondary)
                         .frame(width: 12)
 
                     Image(systemName: "message.fill")
                         .foregroundColor(.purple)
                     Text("Teams Chats")
-                        .font(.headline)
+                        .reportFont(.headline)
                     Spacer()
                     if !conversations.isEmpty {
                         Text("\(conversations.count) conversations")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                            .reportFont(.caption)
+                            .foregroundStyle(Color.reportSecondary)
                     }
                 }
                 .contentShape(Rectangle())
@@ -328,7 +329,7 @@ struct DailyMeetingReportView: View {
                 // Conversation list or empty state
                 if conversations.isEmpty {
                     Text("No Teams chats in selected date range")
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(Color.reportSecondary)
                         .frame(maxWidth: .infinity, alignment: .center)
                         .padding()
                 } else {
@@ -352,18 +353,18 @@ struct DailyMeetingReportView: View {
             Button(action: { showTodaySection.toggle() }) {
                 HStack {
                     Image(systemName: showTodaySection ? "chevron.down" : "chevron.right")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .reportFont(.caption)
+                        .foregroundStyle(Color.reportSecondary)
                         .frame(width: 12)
 
                     Image(systemName: "checkmark.circle")
                         .foregroundColor(.green)
                     Text("What To Do Today")
-                        .font(.headline)
+                        .reportFont(.headline)
                     Spacer()
                     Text("\(plan.upcomingEvents.count + plan.unreadEmailThreads.count + plan.unreadChatConversations.count) buckets")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .reportFont(.caption)
+                        .foregroundStyle(Color.reportSecondary)
                 }
                 .contentShape(Rectangle())
             }
@@ -375,7 +376,7 @@ struct DailyMeetingReportView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("From \(formatTimestamp(plan.generatedAt)) to \(formatTimestamp(plan.endOfDay))")
-                            .font(.subheadline)
+                            .reportFont(.subheadline)
                             .fontWeight(.medium)
                     }
 
@@ -394,16 +395,16 @@ struct DailyMeetingReportView: View {
             Button(action: { showTodayCalendarSection.toggle() }) {
                 HStack {
                     Image(systemName: showTodayCalendarSection ? "chevron.down" : "chevron.right")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .reportFont(.caption)
+                        .foregroundStyle(Color.reportSecondary)
                         .frame(width: 12)
                     Label("Upcoming Calendar Events", systemImage: "calendar")
-                        .font(.headline)
+                        .reportFont(.headline)
                     Spacer()
                     if !events.isEmpty {
                         Text("\(events.count) events")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                            .reportFont(.caption)
+                            .foregroundStyle(Color.reportSecondary)
                     }
                 }
                 .contentShape(Rectangle())
@@ -413,15 +414,15 @@ struct DailyMeetingReportView: View {
             if showTodayCalendarSection {
                 if events.isEmpty {
                     Text("No remaining calendar events today")
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(Color.reportSecondary)
                 } else {
                     ForEach(events, id: \.id) { event in
                         VStack(alignment: .leading, spacing: 2) {
                             Text(event.subject)
                                 .fontWeight(.medium)
                             Text(formatEventTimeRange(event))
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                                .reportFont(.caption)
+                                .foregroundStyle(Color.reportSecondary)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.vertical, 4)
@@ -436,16 +437,16 @@ struct DailyMeetingReportView: View {
             Button(action: { showTodayEmailSection.toggle() }) {
                 HStack {
                     Image(systemName: showTodayEmailSection ? "chevron.down" : "chevron.right")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .reportFont(.caption)
+                        .foregroundStyle(Color.reportSecondary)
                         .frame(width: 12)
                     Label("Unread Email", systemImage: "envelope.fill")
-                        .font(.headline)
+                        .reportFont(.headline)
                     Spacer()
                     if !threads.isEmpty {
                         Text("\(threads.count) threads")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                            .reportFont(.caption)
+                            .foregroundStyle(Color.reportSecondary)
                     }
                 }
                 .contentShape(Rectangle())
@@ -455,7 +456,7 @@ struct DailyMeetingReportView: View {
             if showTodayEmailSection {
                 if threads.isEmpty {
                     Text("No unread email")
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(Color.reportSecondary)
                 } else {
                     ForEach(threads) { thread in
                         EmailThreadView(
@@ -474,16 +475,16 @@ struct DailyMeetingReportView: View {
             Button(action: { showTodayChatSection.toggle() }) {
                 HStack {
                     Image(systemName: showTodayChatSection ? "chevron.down" : "chevron.right")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .reportFont(.caption)
+                        .foregroundStyle(Color.reportSecondary)
                         .frame(width: 12)
                     Label("Unread Teams Messages", systemImage: "message.fill")
-                        .font(.headline)
+                        .reportFont(.headline)
                     Spacer()
                     if !conversations.isEmpty {
                         Text("\(conversations.count) conversations")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                            .reportFont(.caption)
+                            .foregroundStyle(Color.reportSecondary)
                     }
                 }
                 .contentShape(Rectangle())
@@ -493,7 +494,7 @@ struct DailyMeetingReportView: View {
             if showTodayChatSection {
                 if conversations.isEmpty {
                     Text("No unread Teams messages")
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(Color.reportSecondary)
                 } else {
                     ForEach(conversations) { conversation in
                         ChatConversationView(
@@ -514,7 +515,7 @@ struct DailyMeetingReportView: View {
             ProgressView()
                 .scaleEffect(1.2)
             Text("Generating report...")
-                .foregroundColor(.secondary)
+                .foregroundStyle(Color.reportSecondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -523,9 +524,9 @@ struct DailyMeetingReportView: View {
         VStack(spacing: 12) {
             Image(systemName: "doc.text.magnifyingglass")
                 .font(.system(size: 48))
-                .foregroundColor(.secondary)
+                .foregroundStyle(Color.reportSecondary)
             Text("Select a date range and click Generate")
-                .foregroundColor(.secondary)
+                .foregroundStyle(Color.reportSecondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -536,9 +537,9 @@ struct DailyMeetingReportView: View {
                 .font(.system(size: 48))
                 .foregroundColor(.red)
             Text("Error Generating Report")
-                .font(.headline)
+                .reportFont(.headline)
             Text(message)
-                .foregroundColor(.secondary)
+                .foregroundStyle(Color.reportSecondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
         }

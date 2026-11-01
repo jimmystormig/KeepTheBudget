@@ -63,6 +63,7 @@ struct WeeklyReportView: View {
                 .padding([.horizontal, .bottom])
         }
         .frame(minWidth: 550, minHeight: 650)
+        .reportZoomable()
         .onAppear {
             generateReportForCurrentDates()
         }
@@ -73,14 +74,14 @@ struct WeeklyReportView: View {
     private var dateRangeSelectorView: some View {
         HStack(spacing: 12) {
             Text("From:")
-                .foregroundColor(.secondary)
+                .foregroundStyle(Color.reportSecondary)
 
             DatePicker("", selection: $startDate, displayedComponents: .date)
                 .labelsHidden()
                 .frame(width: 130)
 
             Text("To:")
-                .foregroundColor(.secondary)
+                .foregroundStyle(Color.reportSecondary)
 
             DatePicker("", selection: $endDate, displayedComponents: .date)
                 .labelsHidden()
@@ -110,7 +111,7 @@ struct WeeklyReportView: View {
                 // First-level groups
                 if report.firstLevelGroups.isEmpty {
                     Text("No events found in selected date range")
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(Color.reportSecondary)
                         .frame(maxWidth: .infinity, alignment: .center)
                         .padding()
                 } else {
@@ -133,14 +134,14 @@ struct WeeklyReportView: View {
     private func reportHeaderView(_ report: TimeReport) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(formatDateRange(start: report.startDate, end: report.endDate))
-                .font(.title3)
+                .reportFont(.title3)
                 .fontWeight(.semibold)
 
             HStack {
                 Text("Total:")
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(Color.reportSecondary)
                 Text(TimeFormatter.format(minutes: report.totalMinutes))
-                    .font(.title3)
+                    .reportFont(.title3)
                     .fontWeight(.semibold)
             }
         }
@@ -156,7 +157,7 @@ struct WeeklyReportView: View {
             ProgressView()
                 .scaleEffect(1.2)
             Text("Generating report...")
-                .foregroundColor(.secondary)
+                .foregroundStyle(Color.reportSecondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -165,9 +166,9 @@ struct WeeklyReportView: View {
         VStack(spacing: 12) {
             Image(systemName: "doc.text")
                 .font(.system(size: 48))
-                .foregroundColor(.secondary)
+                .foregroundStyle(Color.reportSecondary)
             Text("Select a date range and click Generate")
-                .foregroundColor(.secondary)
+                .foregroundStyle(Color.reportSecondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -263,18 +264,18 @@ struct FirstLevelGroupView: View {
             Button(action: onToggle) {
                 HStack {
                     Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .reportFont(.caption)
+                        .foregroundStyle(Color.reportSecondary)
                         .frame(width: 12)
 
                     Text(group.name)
-                        .font(.title3)
+                        .reportFont(.title3)
                         .fontWeight(.semibold)
                         .foregroundColor(.primary)
 
                     Text("(\(TimeFormatter.format(minutes: group.totalMinutes)))")
-                        .font(.body)
-                        .foregroundColor(.secondary)
+                        .reportFont(.body)
+                        .foregroundStyle(Color.reportSecondary)
 
                     Spacer()
                 }
@@ -307,12 +308,12 @@ struct SecondLevelGroupView: View {
             // Second level name and time
             HStack {
                 Text("- \(group.name)")
-                    .font(.body)
+                    .reportFont(.body)
                     .fontWeight(.medium)
 
                 Text("(\(TimeFormatter.format(minutes: group.roundedMinutes)))")
-                    .font(.body)
-                    .foregroundColor(.secondary)
+                    .reportFont(.body)
+                    .foregroundStyle(Color.reportSecondary)
             }
 
             // Descriptions as bullet points
@@ -320,8 +321,8 @@ struct SecondLevelGroupView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     ForEach(group.descriptions, id: \.self) { description in
                         Text("• \(description)")
-                            .font(.body)
-                            .foregroundColor(.secondary)
+                            .reportFont(.body)
+                            .foregroundStyle(Color.reportSecondary)
                     }
                 }
                 .padding(.leading, 12)
