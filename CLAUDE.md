@@ -7,9 +7,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 KeepTheBudget is a macOS menu bar application that tracks scheduled time from Office 365 Calendar. It displays daily and weekly time summaries with visual warnings when exceeding configured goals.
 
 **Tech Stack:**
-- Swift 5.9 / SwiftUI + AppKit
-- macOS 12.0+ deployment target
-- MSAL (Microsoft Authentication Library) for OAuth 2.0 fallback
+- Swift 6 / SwiftUI + AppKit
+- macOS 27.0+ deployment target (Xcode 27)
+- MSAL 2.x (Microsoft Authentication Library, via SwiftPM) for OAuth 2.0 fallback
 - Microsoft Graph API v1.0 for calendar data
 
 ## Build Commands
@@ -243,7 +243,7 @@ Events are filtered server-side with OData and client-side:
 // Server-side: Date range filter
 $filter=start/dateTime ge '2026-01-20T00:00:00' and end/dateTime le '2026-01-20T23:59:59'
 
-// Client-side: Organizer filter (AppDelegate.swift:303)
+// Client-side: Organizer filter (AppDelegate.refreshData())
 let ownEvents = events.filter {
     $0.organizerEmail.caseInsensitiveCompare(userProfile.mail) == .orderedSame
 }
@@ -253,7 +253,7 @@ let ownEvents = events.filter {
 
 ### Pagination Handling
 
-Graph API returns max 100 events per page. `GraphAPIService.fetchEvents()` handles pagination with `@odata.nextLink` (lines 45-93).
+Graph API returns max 100 events per page. `GraphAPIService.fetchEvents()` handles pagination with `@odata.nextLink`.
 
 ## Secure Configuration Architecture
 
@@ -345,7 +345,7 @@ Format: `🕐 6h 30m / 32h 15m` (daily / weekly)
 - Loading: Clock icon with "Loading..."
 - Error: Warning triangle with "Error"
 
-**Implementation**: `AppDelegate.updateStatusItemDisplay()` (line 95)
+**Implementation**: `AppDelegate.updateStatusItemDisplay()`
 
 ## Development & Testing
 
@@ -399,7 +399,7 @@ To test immediate refresh:
 
 ### Concurrency Guards
 
-`refreshData()` has built-in guard against concurrent refreshes (line 250):
+`refreshData()` has built-in guard against concurrent refreshes:
 
 ```swift
 if wasLoading {
@@ -432,7 +432,7 @@ open /Applications/KeepTheBudget.app
 
 ## Files Not to Modify
 
-- `Package.swift` - SPM dependencies (MSAL 1.3.0+)
+- `Package.swift` - SPM dependencies (MSAL 2.14.1+)
 - `project.yml` - XcodeGen config (regenerate Xcode project if changed)
 - `KeepTheBudget.entitlements` - Security entitlements
 - `Info.plist` - Must contain `msal{clientId}://auth` URL scheme matching configured Client ID

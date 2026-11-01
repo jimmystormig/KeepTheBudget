@@ -6,8 +6,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/AzureAD/microsoft-authentication-library-for-objc",
       "state" : {
-        "revision" : "8dfe5bf41fe10e6d2afed62a72c4232adbef20f4",
-        "version" : "2.16.0"
+        "revision" : "d2f5eca988c78eba59ed374c725055b46f0d9a8a",
+        "version" : "2.17.0"
       }
     }
   ],
